@@ -14,7 +14,8 @@ const {
     getUser,
     updateCredentials,
     deleteCredentials,
-    regenerateClientSecret
+    regenerateClientSecret,
+    authorizeApp 
 } = require('../controllers/user');
 
 // Authentication routes
@@ -38,5 +39,6 @@ router.post('/credentials/:id/regenerate-secret', regenerateClientSecret);
 router.get('/getCode', getCode);
 router.post('/getToken', getToken);
 router.get('/getUser', getUser);
+router.get('/authorize', authorizeApp);  
 
 module.exports = router;

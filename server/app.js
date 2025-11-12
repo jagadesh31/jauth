@@ -9,7 +9,7 @@ const app = express();
 
 const CLIENT_BASE_URL = process.env.CLIENT_BASE_URL || 'https://jauth.jagadesh31.tech';
 
-// Use simpler CORS configuration first (like your working version)
+
 app.use(cors({
   origin: CLIENT_BASE_URL,
   credentials: true
@@ -17,7 +17,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Routes
+
 app.get('/', (req, res) => {
   res.status(200).json({
     message: 'Jauth Backend is running!',

@@ -415,9 +415,47 @@ const regenerateClientSecret = async (req, res) => {
     }
 };
 
+const authorizeApp = async (req, res) => {
+    const { client_id, redirect_uri, response_type, scope } = req.query;
+
+    console.log('OAuth Authorization Request:', {
+        client_id,
+        redirect_uri, 
+        response_type,
+        scope
+    });
+
+    try {
+        // Verify client exists
+        const client = await credentialsModel.findOne({ clientId: client_id });
+        if (!client) {
+            return res.status(400).json({ message: 'Invalid client_id' });
+        }
+
+        // Validate response_type
+        if (response_type !== 'code') {
+            return res.status(400).json({ message: 'Unsupported response_type' });
+        }
+
+        // Redirect to your existing RedirectPage component
+        res.redirect(
+            `${process.env.CLIENT_URL}/redirect?` +
+            `client_id=${client_id}&` +
+            `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
+            `response_type=${response_type}&` +
+            `scope=${encodeURIComponent(scope || '')}`
+        );
+
+    } catch (err) {
+        console.log('OAuth Authorization error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
     // createLink,
     // verifyLink,
+    authorizeApp,
     registerUser,
     loginUser,
     userInfo,
