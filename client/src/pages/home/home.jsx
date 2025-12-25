@@ -1,11 +1,11 @@
 import { useState, useEffect, useContext } from "react";
-import axios from "axios";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { authContext } from './../contexts/authContext';
-import AppTemplate from './../components/appsTemplate';
-import Loader from './../components/loader';
-import { IoNotificationsOutline, IoAddCircleOutline } from "react-icons/io5";
+import { authContext } from '../../contexts/authContext';
+import AppTemplate from './components/appsTemplate';
+import Loader from '../../components/loader';
+import {IoAddCircleOutline } from "react-icons/io5";
+import api from "../../api/axios";
 
 
 function Home() {
@@ -16,7 +16,7 @@ function Home() {
   const [loading, setLoading] = useState(true);
 
   function getData() {
-    axios.get(`${import.meta.env.VITE_SERVER_BASE_URL}/user/getApps?userId=${user._id}`)
+    api.get(`/user/getApps?userId=${user._id}`)
       .then((res) => {
         if (res.status === 203) {
           setLoading(false);
@@ -40,7 +40,7 @@ function Home() {
   const handleDelete = async (appId) => {
     if (window.confirm('Are you sure you want to delete this application?')) {
       try {
-        await axios.delete(`${import.meta.env.VITE_SERVER_BASE_URL}/user/credentials/${appId}`);
+        await api.delete(`/user/credentials/${appId}`);
         toast.success('Application deleted successfully');
         getData();
       } catch (err) {
@@ -58,7 +58,7 @@ function Home() {
   const handleRegenerateSecret = async (appId) => {
     if (window.confirm('Are you sure you want to regenerate the client secret? This will invalidate the old one.')) {
       try {
-        await axios.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/credentials/${appId}/regenerate-secret`);
+        await api.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/credentials/${appId}/regenerate-secret`);
         toast.success('Client secret regenerated successfully');
         getData();
       } catch (err) {
@@ -237,7 +237,7 @@ function DefaultDialog({ setIsOpen, user, getData, editingApp, setEditingApp }) 
 
     const method = editingApp ? 'put' : 'post';
 
-    axios[method](url, form)
+    api[method](url, form)
       .then((res) => {
         toast.success(editingApp ? 'Application updated successfully' : 'Application created successfully');
         setIsOpen(false);

@@ -2,9 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const userRouter = require('./routes/user.js');
+const oauthRouter = require('./routes/oauth.js');
+const logger = require('./middleware/logger.js');
 const app = express();
 
 const CLIENT_BASE_URL = process.env.CLIENT_BASE_URL || 'https://jauth.jagadesh31.tech';
@@ -15,21 +18,26 @@ app.use(cors({
   credentials: true
 }));
 
+
+app.use(cookieParser());
 app.use(express.json());
+app.use(logger);
 
+app.use('/user', userRouter);
+app.use('/oauth', oauthRouter);
 
-app.get('/', (req, res) => {
+app.get('/health', (req, res) => {
   res.status(200).json({
-    message: 'Jauth Backend is running!',
-    server: 'jauth-server.jagadesh31.tech'
+    status: 'OK',
+    message: 'Server is healthy'
   });
 });
 
-app.use('/user', userRouter);
+
 
 const port = process.env.PORT || 5001;
 
-console.log(process.env.MONGO_URL);
+
 
 mongoose.connect(process.env.MONGO_URL)
   .then(() => {

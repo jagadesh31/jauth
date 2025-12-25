@@ -1,95 +1,12 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-// const nodemailer = require('nodemailer');
-// const hbs = require('nodemailer-express-handlebars').default;
 const bcrypt = require('bcrypt');
 
 require('dotenv').config();
 
 let userModel = require('../models/user.js');
-let verificationLinkModel = require('../models/verificationLink.js');
 const credentialsModel = require('../models/credentials.js');
-const authorizationCodeModel = require('../models/authorizationCode.js');
+const { generateAccessToken, generateRefreshToken, randomCode } = require('../utils/auth.js');
 
-const randomCode = () => {
-    return crypto.randomBytes(32).toString('hex');
-};
-
-const generateAccessToken = (payload) => {
-    let options = {
-        expiresIn: '15m'
-    };
-    let token = jwt.sign(payload, process.env.ACCESS_SECRET_CODE, options);
-    return token;
-};
-
-const generateRefreshToken = (payload) => {
-    let options = {
-        expiresIn: '7d'
-    };
-    let token = jwt.sign(payload, process.env.REFRESH_SECRET_CODE, options);
-    return token;
-};
-
-const refreshToken = (req, res) => {
-    const token = req.cookies.refreshToken;
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, process.env.REFRESH_SECRET_CODE, (err, user) => {
-        if (err) return res.sendStatus(403);
-        const newAccessToken = generateAccessToken({ userId: user.userId });
-        res.json({ accessToken: newAccessToken });
-    });
-};
-
-// const createLink = async (req, res) => {
-//     let { email, purpose } = req.query;
-//     let code = randomCode();
-    
-//     try {
-//         let user = await userModel.findOne({ email: email });
-//         if (user) {
-//             return res.status(400).json({ message: 'Email Already Registered' });
-//         }
-
-//         let result = await verificationLinkModel.create({
-//             email: email,
-//             purpose: purpose,
-//             code: code,
-//             expiresAt: new Date(Date.now() + 120 * 60 * 1000)
-//         });
-        
-//         // sendMail(email, code);
-//         return res.status(200).json({ message: 'Send Successfully' });
-//     } catch (err) {
-//         console.log('error :', err);
-//         return res.status(500).json({ message: 'Server Error' });
-//     }
-// };
-
-// const verifyLink = async (req, res) => {
-//     let { code } = req.query;
-//     console.log(code);
-    
-//     try {
-//         let result = await verificationLinkModel.findOne({ code: code });
-//         if (!result) {
-//             return res.status(404).json({ message: 'Invalid verification link' });
-//         }
-
-//         if (result.expiresAt < new Date()) {
-//             return res.status(404).json({ message: 'Link got Expired' });
-//         }
-
-//         console.log(result);
-//         if (result.purpose === 'register') {
-//             res.redirect(`http://localhost:5173/redirect?token=${code}&purpose=${result.purpose}&email=${result.email}`);
-//         }
-//     } catch (err) {
-//         console.log('error :', err);
-//         res.status(500).json({ message: 'Server Error' });
-//     }
-// };
 
 const loginUser = async (req, res) => {
     try {
@@ -106,43 +23,27 @@ const loginUser = async (req, res) => {
         }
 
         let accessToken = generateAccessToken({ userId: result._id });
+        let refreshToken = generateRefreshToken({ userId: result._id });
+
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
         res.status(200).json({ 
             message: 'Successfully logged in', 
-            user: result, 
-            accessToken 
-        });
+            user: result});
+
     } catch (err) {
         console.log('error :', err);
         res.status(500).json({ message: 'Server Error' });
-    }
-};
-
-const userInfo = async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        const decoded = jwt.verify(token, process.env.ACCESS_SECRET_CODE);
-        const userInfo = await userModel.findById(decoded.userId);
-
-        if (!userInfo) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        
-        res.status(200).json(userInfo);
-    } catch (err) {
-        if (err.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Token expired' });
-        } else if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ message: 'Invalid token' });
-        }
-        
-        console.error('Error fetching user info:', err);
-        res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -170,11 +71,22 @@ const registerUser = async (req, res) => {
 
         let result = await userModel.create(userData);
         let accessToken = generateAccessToken({ userId: result._id });
-        
+        let refreshToken = generateRefreshToken({ userId: result._id });
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
         res.status(201).json({ 
             message: 'Successfully created', 
-            user: result, 
-            accessToken 
+            user: result
         });
     } catch (err) {
         console.log('error :', err);
@@ -182,44 +94,43 @@ const registerUser = async (req, res) => {
     }
 };
 
-// Email configuration
-// const transporter = nodemailer.createTransporter({
-//     service: 'gmail',
-//     auth: {
-//         user: process.env.EMAIL_USER || 'gamerdevil033@gmail.com',
-//         pass: process.env.EMAIL_PASS || 'acuq kycu iyhe xiyc'
-//     }
-// });
+const getUserInfo = async (req, res) => {
+    const token = req.cookies['access_token'];
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
+        const userInfo = await userModel.findById(decoded.userId);
+        if (!userInfo) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(userInfo);
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: 'Token expired' });
+        } else if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ message: 'Invalid token' });
+        }
+        console.error('Error fetching user info:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
-// const sendMail = (email, code) => {
-//     // transporter.use('compile', hbs({
-//     //     viewEngine: {
-//     //         extname: '.hbs',
-//     //         partialsDir: path.resolve(__dirname, '../templates'),
-//     //         defaultLayout: false
-//     //     },
-//     //     viewPath: path.resolve(__dirname, '../templates'),
-//     //     extName: '.hbs'
-//     // }));
+const logoutUser = async (req, res) => {
+    try {
+        res.clearCookie('access_token', {  
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'})
+        res.status(200).json({ message: 'Successfully logged out' });
+        }
+        catch(err){
+            console.err('Error during logout:', err);
+            return res.status(500).json({ message: 'Server error during logout' });
+        }
+    } 
 
-//     // let options = {
-//     //     from: process.env.EMAIL_USER || 'gamerdevil033@gmail.com',
-//     //     to: email,
-//     //     subject: 'Verification Link',
-//     //     template: 'verificationLink',
-//     //     context: {
-//     //         link: `http://localhost:5000/user/verifyLink/callback?code=${code}`
-//     //     }
-//     // };
-
-//     // transporter.sendMail(options, (err, info) => {
-//     //     if (err) { 
-//     //         console.log('Email error:', err);
-//     //         return;
-//     //     }
-//     //     console.log('Email sent:', info.response);
-//     // });
-// };
 
 const getApps = async (req, res) => {
     let { userId } = req.query;
@@ -250,79 +161,6 @@ const createCredentials = async (req, res) => {
     } catch (err) {
         console.log('Error creating credentials:', err);
         res.status(500).json({ message: 'Server Error' });
-    }
-};
-
-const getCode = async (req, res) => {
-    let { userId } = req.query;
-    let code = randomCode();
-
-    try {
-        let result = await authorizationCodeModel.create({ userId: userId, code: code });
-        res.status(200).json({ code: result.code });
-    } catch (err) {
-        console.log('Error in code generation', err);
-        res.status(500).json({ message: 'Server Error' });
-    }
-};
-
-const getToken = async (req, res) => {
-    const { code, client_id, client_secret, redirect_uri } = req.query;
-
-    try {
-        // Verify client credentials first
-        const client = await credentialsModel.findOne({ 
-            clientId: client_id, 
-            clientSecret: client_secret 
-        });
-        
-        if (!client) {
-            return res.status(401).json({ message: 'Invalid client credentials' });
-        }
-
-        const result = await authorizationCodeModel.findOne({ code });
-        if (!result) {
-            return res.status(400).json({ message: 'Invalid authorization code' });
-        }
-
-        const access_token = generateAccessToken({ userId: result.userId });
-        res.status(200).json({ 
-            access_token,
-            token_type: 'Bearer',
-            expires_in: 900 // 15 minutes
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-const getUser = async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        const decoded = jwt.verify(token, process.env.ACCESS_SECRET_CODE);
-        const userInfo = await userModel.findById(decoded.userId);
-
-        if (!userInfo) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        
-        res.status(200).json(userInfo);
-    } catch (err) {
-        if (err.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Token expired' });
-        } else if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ message: 'Invalid token' });
-        }
-        
-        console.error('Error fetching user info:', err);
-        res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -415,57 +253,16 @@ const regenerateClientSecret = async (req, res) => {
     }
 };
 
-const authorizeApp = async (req, res) => {
-    const { client_id, redirect_uri, response_type, scope } = req.query;
 
-    console.log('OAuth Authorization Request:', {
-        client_id,
-        redirect_uri, 
-        response_type,
-        scope
-    });
-
-    try {
-        // Verify client exists
-        const client = await credentialsModel.findOne({ clientId: client_id });
-        if (!client) {
-            return res.status(400).json({ message: 'Invalid client_id' });
-        }
-
-        // Validate response_type
-        if (response_type !== 'code') {
-            return res.status(400).json({ message: 'Unsupported response_type' });
-        }
-
-        // Redirect to your existing RedirectPage component
-        res.redirect(
-            `${process.env.CLIENT_URL}/redirect?` +
-            `client_id=${client_id}&` +
-            `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
-            `response_type=${response_type}&` +
-            `scope=${encodeURIComponent(scope || '')}`
-        );
-
-    } catch (err) {
-        console.log('OAuth Authorization error:', err);
-        res.status(500).json({ message: 'Server Error' });
-    }
-};
 
 module.exports = {
-    // createLink,
-    // verifyLink,
-    authorizeApp,
     registerUser,
     loginUser,
-    userInfo,
-    refreshToken,
+    getUserInfo,
     getApps,
     createCredentials,
-    getToken,
-    getCode,
-    getUser,
     updateCredentials,
     deleteCredentials,
-    regenerateClientSecret
+    regenerateClientSecret,
+    logoutUser
 };

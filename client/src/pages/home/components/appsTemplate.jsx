@@ -1,13 +1,22 @@
 
 
-import { FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
-
+import { useState } from "react";
+import { FiEdit2, FiTrash2, FiCopy, FiCheckCircle } from "react-icons/fi";
 
 const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
+  const [copied, setCopied] = useState("");
+  const handleCopy = (value, label) => {
+    onCopy(value);
+    setCopied(label);
+    setTimeout(() => setCopied(""), 1200);
+  };
   return (
-    <div className="app-card bg-white rounded-xl border border-gray-200 p-6 w-full shadow-sm hover:shadow-md transition-all duration-300">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-bold text-gray-900 truncate">{app.name}</h3>
+    <div className="app-card bg-white rounded-2xl border border-gray-200 p-6 w-full shadow-md hover:shadow-lg transition-all duration-300">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 truncate">{app.name}</h3>
+          <p className="text-xs text-gray-500 mt-1">App ID: <span className="font-mono">{app._id}</span></p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => onEdit(app)}
@@ -32,11 +41,11 @@ const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
           <div className="value-container flex items-center gap-2 mt-1">
             <span className="value text-gray-900 break-all text-sm">{app.home}</span>
             <button
-              onClick={() => onCopy(app.home)}
+              onClick={() => handleCopy(app.home, "home")}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               title="Copy URL"
             >
-              <FiCopy className="text-sm" />
+              {copied === "home" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
             </button>
           </div>
         </div>
@@ -46,11 +55,11 @@ const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
           <div className="value-container flex items-center gap-2 mt-1">
             <span className="value text-gray-900 break-all text-sm">{app.callback}</span>
             <button
-              onClick={() => onCopy(app.callback)}
+              onClick={() => handleCopy(app.callback, "callback")}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               title="Copy URL"
             >
-              <FiCopy className="text-sm" />
+              {copied === "callback" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
             </button>
           </div>
         </div>
@@ -62,11 +71,11 @@ const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
             <div className="flex justify-between items-center mb-2">
               <span className="label font-semibold text-gray-700 text-sm">Client ID:</span>
               <button
-                onClick={() => onCopy(app.clientId)}
+                onClick={() => handleCopy(app.clientId, "clientId")}
                 className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
                 title="Copy Client ID"
               >
-                <FiCopy className="text-sm" />
+                {copied === "clientId" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
               </button>
             </div>
             <code className="value text-gray-900 break-all font-mono text-xs bg-gray-50 px-2 py-1 rounded border">
@@ -79,11 +88,11 @@ const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
               <span className="label font-semibold text-gray-700 text-sm">Client Secret:</span>
               <div className="flex gap-1">
                 <button
-                  onClick={() => onCopy(app.clientSecret)}
+                  onClick={() => handleCopy(app.clientSecret, "clientSecret")}
                   className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
                   title="Copy Client Secret"
                 >
-                  <FiCopy className="text-sm" />
+                  {copied === "clientSecret" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
                 </button>
                 <button
                   onClick={() => onRegenerateSecret(app._id)}

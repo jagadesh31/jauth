@@ -1,24 +1,18 @@
 import { useState, useEffect, useContext } from "react";
 import { useNavigate, Navigate } from 'react-router-dom';
-import axios from "axios";
-import { FaGoogle } from "react-icons/fa";
-import { SiDash } from "react-icons/si";
 import { MdOutlineEmail } from "react-icons/md";
-import { FaGithub } from "react-icons/fa";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { authContext } from '../contexts/authContext';
+import { authContext } from '../../contexts/authContext';
+import api from "../../api/axios";
 
-let icons = {
-  'google': <FaGoogle />,
-  'dauth': <SiDash />,
-  'github': <FaGithub />,
-  'email': <MdOutlineEmail />,
-};
+
+
+let email_icon = <MdOutlineEmail />
 
 const Base = () => {
-  const { user, setUser, logout } = useContext(authContext);
+  const { user, setUser} = useContext(authContext);
 
   const params = new URLSearchParams(window.location.search);
   const token = params.get('OauthToken');
@@ -38,7 +32,7 @@ const Base = () => {
   const [username, setUsername] = useState('');
 
   const sendLink = (purpose) => {
-    axios.get(`${import.meta.env.VITE_SERVER_BASE_URL}/user/createLink?email=${email}&purpose=${purpose}`)
+    api.get(`/user/createLink?email=${email}&purpose=${purpose}`)
       .then((res) => {
         console.log(res.data);
         if (res.data.message === 'Send Successfully') {
@@ -69,8 +63,7 @@ const Base = () => {
   return (
     <>
       <ToastContainer />
-      <Header setIsOpen={setIsOpen} isOpen={isOpen} />
-      <div className={`body flex justify-center items-center w-screen min-h-screen bg-[#F7F4ED] py-20`}>
+      <div className={`body min-h-screen bg-[#F7F4ED] flex justify-center items-center overflow-hidden`}>
         <div className="mainContent text-black flex flex-col justify-center gap-8 w-[90%] max-w-[1200px] items-center text-center px-4">
           <div className="heading-section max-w-4xl">
             <h1 className="heading text-4xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
@@ -80,7 +73,6 @@ const Base = () => {
               Build secure authentication flows with our developer-friendly OAuth 2.0 provider
             </div>
           </div>
-
 
           <div className="wrapper">
             <button 
@@ -96,7 +88,7 @@ const Base = () => {
           </div>
 
           {isOpen &&
-            <div className="fixed inset-0 z-50 rounded-lg shadow-xl w-screen h-screen bg-transparent backdrop-blur-xl bg-opacity-50 flex justify-center items-center p-4">
+            <div className="fixed inset-0 z-50 rounded-lg shadow-xl w-screen h-screen bg-transparent backdrop-blur-xl bg-opacity-50 flex justify-center items-center p-4 overflow-hidden">
               <div className="container bg-white shadow-xl h-auto max-h-[90vh] w-full max-w-[500px] md:w-[450px] text-black flex flex-col rounded-2xl overflow-hidden">
                 <div className="flex justify-end p-4">
                   <button 
@@ -114,46 +106,11 @@ const Base = () => {
           }
         </div>
       </div>
-      <Footer isOpen={isOpen} />
     </>
   );
 };
 
-const Header = ({ setIsOpen }) => {
-  return (
-    <div className={`header bg-[#F7F4ED] text-black h-[70px] flex items-center justify-center w-screen border-black border-b-2 fixed top-0 left-0 shadow-sm z-40`}>
-      <div className="container w-[90%] max-w-[1200px] flex justify-between items-center px-4">
-        <div className="left text-2xl md:text-3xl cursor-pointer font-extrabold">JAuth</div>
-        <div className="right text-black text-base md:text-lg list-none flex gap-6 items-center">
-          <li className='cursor-pointer hover:text-gray-700 transition-colors duration-200'>Documentation</li>
-          <li className='cursor-pointer hover:text-gray-300 transition-colors duration-200'>About</li>
-          <button 
-            className='text-[#F7F4ED] bg-black py-2 px-4 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors duration-200'
-            onClick={() => setIsOpen(true)}
-          >
-            Get Started
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
-const Footer = () => {
-  return (
-    <div className={`footer bg-black text-[#F7F4ED] py-4 flex justify-center items-center w-screen absolute bottom-0`}>
-      <div className="container w-[90%] max-w-[1200px] flex flex-col md:flex-row items-center justify-between gap-6 px-4">
-        <div className='right self-start text-base md:text-lg list-none gap-6 flex flex-wrap justify-center'>
-          <li className='cursor-pointer hover:text-gray-300 transition-colors duration-200'>About</li>
-          <li className='cursor-pointer hover:text-gray-300 transition-colors duration-200'>Documentation</li>
-          <li className='cursor-pointer hover:text-gray-300 transition-colors duration-200'>Support</li>
-          <li className='cursor-pointer hover:text-gray-300 transition-colors duration-200'>Terms</li>
-          <li className='cursor-pointer hover:text-gray-300 transition-colors duration-200'>Privacy</li>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 function DefaultDialog({ setCurrentDialog }) {
   return (
@@ -161,7 +118,7 @@ function DefaultDialog({ setCurrentDialog }) {
       <div className="content text-black flex flex-col gap-6 w-full">
         <div className="text-center">
           <h2 className='text-2xl md:text-3xl font-bold mb-2'>Welcome to JAuth</h2>
-          <p className="text-gray-600">Create your developer account to get started</p>
+          <p className="text-gray-600">Create your account to get started</p>
         </div>
         
         <div className="space-y-4">
@@ -169,7 +126,7 @@ function DefaultDialog({ setCurrentDialog }) {
             className='w-full border-2 border-gray-300 rounded-xl px-4 py-3 flex items-center justify-center gap-4 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200'
             onClick={() => { setCurrentDialog('SignupWithEmail') }}
           >
-            <span className="logo text-xl">{icons.email}</span>
+            <span className="logo text-xl">{email_icon}</span>
             <span className="title font-medium">Continue with Email</span>
           </button>
         </div>
@@ -229,7 +186,7 @@ function SignupWithEmail({ setCurrentDialog, setEmail, email, sendLink, password
       return;
     }
 
-    axios.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/register`, {
+    api.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/register`, {
       email: email,
       password: password,
       username: username
@@ -255,8 +212,8 @@ function SignupWithEmail({ setCurrentDialog, setEmail, email, sendLink, password
     <div className="flex flex-col justify-center items-center p-6 gap-4 w-full">
       <div className="content text-black flex flex-col gap-5 w-full">
         <div className="text-center mb-2">
-          <div className='text-3xl md:text-4xl text-center flex justify-center items-center mb-2'>{icons.email}</div>
-          <h2 className='text-xl md:text-2xl font-bold'>Create Developer Account</h2>
+          <div className='text-3xl md:text-4xl text-center flex justify-center items-center mb-2'>{email_icon}</div>
+          <h2 className='text-xl md:text-2xl font-bold'>Create Account</h2>
           <p className="text-gray-600 text-sm mt-1">Start building with our OAuth 2.0 API</p>
         </div>
 
@@ -373,7 +330,7 @@ function SigninWithEmail({ setCurrentDialog, setEmail, email, password, setPassw
       return;
     }
 
-    axios.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/login`, {
+    api.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/login`, {
       email: email,
       password: password
     })
@@ -398,7 +355,7 @@ function SigninWithEmail({ setCurrentDialog, setEmail, email, password, setPassw
     <div className="flex flex-col justify-center items-center p-6 gap-4 w-full">
       <div className="content text-black flex flex-col gap-5 w-full">
         <div className="text-center mb-2">
-          <div className='text-3xl md:text-4xl text-center flex justify-center items-center mb-2'>{icons.email}</div>
+          <div className='text-3xl md:text-4xl text-center flex justify-center items-center mb-2'>{email_icon}</div>
           <h2 className='text-xl md:text-2xl font-bold'>Sign in to JAuth</h2>
           <p className="text-gray-600 text-sm mt-1">Access your developer dashboard</p>
         </div>
@@ -445,7 +402,7 @@ function SigninWithEmail({ setCurrentDialog, setEmail, email, password, setPassw
           className="w-full bg-black text-[#F7F4ED] font-medium rounded-lg py-3 px-5 cursor-pointer hover:bg-gray-800 transition-colors duration-200 mt-2"
           onClick={signinHandler}
         >
-          Sign in to Dashboard
+          Sign in
         </button>
 
         <div className="text-center space-y-3">
@@ -484,7 +441,7 @@ function Signin({ setCurrentDialog }) {
             className='w-full border-2 border-gray-300 rounded-xl px-4 py-3 flex items-center justify-center gap-4 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200'
             onClick={() => { setCurrentDialog('SigninWithEmail') }}
           >
-            <span className="logo text-xl">{icons.email}</span>
+            <span className="logo text-xl">{email_icon}</span>
             <span className="title font-medium">Continue with Email</span>
           </button>
         </div>
@@ -513,7 +470,7 @@ function Signin({ setCurrentDialog }) {
 const LinkSent = ({ email }) => {
   return (
     <div className="flex flex-col justify-center items-center p-8 gap-6 text-center">
-      <div className='text-4xl md:text-5xl text-center flex justify-center items-center mb-2'>{icons.email}</div>
+      <div className='text-4xl md:text-5xl text-center flex justify-center items-center mb-2'>{email_icon}</div>
       <h2 className='text-xl md:text-2xl font-bold'>Check Your Email</h2>
       <p className="text-gray-600 leading-relaxed">
         We've sent a verification link to <br />
