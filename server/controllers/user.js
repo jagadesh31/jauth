@@ -7,7 +7,6 @@ require('dotenv').config();
 let userModel = require('../models/user.js');
 const credentialsModel = require('../models/credentials.js');
 const { generateAccessToken, generateRefreshToken, randomCode } = require('../utils/auth.js');
-const { default: axios } = require('axios');
 
 
 const loginUser = async (req, res) => {
