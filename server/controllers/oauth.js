@@ -6,29 +6,40 @@ const credentialsModel = require('../models/credentials');
 const authorizationCodeModel = require('../models/authorizationCode');
 const { randomCode, generateAccessToken, generateRefreshToken } = require('../utils/auth');
 
-/* ======================================================
-   AUTHORIZATION CODE ENDPOINT
-   (User must already be authenticated via middleware)
-====================================================== */
-const getCode = async (req, res) => {
+
+const authorizeApp = async (req, res) => {
+  const { client_id, redirect_uri, response_type, scope } = req.query;
+
   try {
-    const { client_id, redirect_uri } = req.query;
-
-    // userId injected by auth middleware
-    if (!req.userId) {
-      return res.status(401).json({ error: 'unauthorized' });
-    }
-
-    // Validate client existence
     const client = await credentialsModel.findOne({ clientId: client_id });
     if (!client) {
-      return res.status(400).json({ error: 'invalid_client' });
+      return res.status(400).json({ message: 'Invalid client_id' });
     }
 
-    // OPTIONAL (commented as requested)
-    // if (client.redirectUri !== redirect_uri) {
-    //   return res.status(400).json({ error: 'invalid_redirect_uri' });
-    // }
+    if (response_type !== 'code') {
+      return res.status(400).json({ message: 'Unsupported response_type' });
+    }
+
+    const CLIENT_URL =
+      process.env.CLIENT_BASE_URL || 'https://jauth.jagadesh31.tech';
+
+    return res.redirect(
+      `${CLIENT_URL}/redirect?` +
+        `client_id=${client_id}&` +
+        `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
+        `response_type=${response_type}&` +
+        `scope=${encodeURIComponent(scope || '')}`
+    );
+
+  } catch (err) {
+    console.error('authorizeApp error:', err);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+const getCode = async (req, res) => {
+  try {
+    const { client_id, redirect_uri ,scope} = req.query;
 
     const code = randomCode();
 
@@ -36,12 +47,11 @@ const getCode = async (req, res) => {
       userId: req.userId,
       clientId: client_id,
       redirectUri: redirect_uri,
+      scope,
       code,
       expiresAt: Date.now() + 60 * 1000, // 1 minute
       used: false
     });
-
-    console.log(`Generated code ${code} for user ${req.userId} and client ${client_id}`);
 
     return res.status(200).json({ code });
 
@@ -51,64 +61,66 @@ const getCode = async (req, res) => {
   }
 };
 
-/* ======================================================
-   TOKEN ENDPOINT
-====================================================== */
+
 const getToken = async (req, res) => {
   const { code, client_id, client_secret, redirect_uri } = req.body;
 
   try {
-    // Validate client credentials
-    const client = await credentialsModel.findOne({
-      clientId: client_id,
-      clientSecret: client_secret
-    });
+
+    console.log(`Received token request with code: ${code}, client_id: ${client_id}, redirect_uri: ${redirect_uri}`);
+
+    const client = await credentialsModel.findOne({clientId: client_id});
 
     if (!client) {
       return res.status(401).json({ error: 'invalid_client' });
     }
 
-    console.log(`Client ${client_id} requesting token with code ${code}`);
 
-    // Validate authorization code
-    const authCode = await authorizationCodeModel.findOne({ code });
-    if (!authCode) {
+
+    const result = await authorizationCodeModel.findOne({ code });
+    if (!result) {
       return res.status(400).json({ error: 'invalid_grant' });
     }
 
-    console.log(`Found auth code:`, authCode);
+    console.log(`Found authorization code:`, result);
 
-    if (authCode.used) {
+ 
+    if (result.used) {
       return res.status(400).json({ error: 'authorization_code_used' });
     }
 
-    // OPTIONAL (commented as requested)
-    // if (authCode.clientId !== client_id) {
-    //   return res.status(400).json({ error: 'invalid_grant' });
-    // }
+ 
 
-    // OPTIONAL (commented as requested)
-    // if (authCode.redirectUri !== redirect_uri) {
-    //   return res.status(400).json({ error: 'invalid_grant' });
-    // }
 
-    if (authCode.expiresAt < Date.now()) {
+    if (result.clientId !== client_id) {
+      return res.status(400).json({ error: 'client_id_mismatch' });
+    }
+
+ 
+
+    if (result.redirectUri !== redirect_uri) {
+      return res.status(400).json({ error: 'redirect_uri_mismatch' });
+    }
+
+
+
+    if (result.expiresAt < Date.now()) {
       return res.status(400).json({ error: 'authorization_code_expired' });
     }
 
-    // Generate tokens
-    const accessToken = generateAccessToken({ userId: authCode.userId });
-    const refreshToken = generateRefreshToken({ userId: authCode.userId });
 
-    // Mark code as used (important)
-    authCode.used = true;
-    await authCode.save();
+
+    const accessToken = generateAccessToken({ userId: result.userId });
+    const refreshToken = generateRefreshToken({ userId: result.userId });
+
+   
+    result.used = true;
+    await result.save();
 
     return res.status(200).json({
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: 'Bearer',
-      expires_in: 900
     });
 
   } catch (err) {
@@ -117,9 +129,7 @@ const getToken = async (req, res) => {
   }
 };
 
-/* ======================================================
-   USER INFO ENDPOINT (Protected Resource)
-====================================================== */
+
 const getUser = async (req, res) => {
   const authHeader = req.headers.authorization;
 
@@ -152,38 +162,8 @@ const getUser = async (req, res) => {
   }
 };
 
-/* ======================================================
-   AUTHORIZE ENDPOINT
-====================================================== */
-const authorizeApp = async (req, res) => {
-  const { client_id, redirect_uri, response_type, scope } = req.query;
 
-  try {
-    const client = await credentialsModel.findOne({ clientId: client_id });
-    if (!client) {
-      return res.status(400).json({ message: 'Invalid client_id' });
-    }
 
-    if (response_type !== 'code') {
-      return res.status(400).json({ message: 'Unsupported response_type' });
-    }
-
-    const CLIENT_URL =
-      process.env.CLIENT_BASE_URL || 'https://jauth.jagadesh31.tech';
-
-    return res.redirect(
-      `${CLIENT_URL}/redirect?` +
-        `client_id=${client_id}&` +
-        `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
-        `response_type=${response_type}&` +
-        `scope=${encodeURIComponent(scope || '')}`
-    );
-
-  } catch (err) {
-    console.error('authorizeApp error:', err);
-    return res.status(500).json({ message: 'Server Error' });
-  }
-};
 
 module.exports = {
   getCode,

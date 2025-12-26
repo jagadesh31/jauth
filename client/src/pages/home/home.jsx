@@ -58,7 +58,7 @@ function Home() {
   const handleRegenerateSecret = async (appId) => {
     if (window.confirm('Are you sure you want to regenerate the client secret? This will invalidate the old one.')) {
       try {
-        await api.post(`${import.meta.env.VITE_SERVER_BASE_URL}/user/credentials/${appId}/regenerate-secret`);
+        await api.post(`/user/credentials/${appId}/regenerate-secret`);
         toast.success('Client secret regenerated successfully');
         getData();
       } catch (err) {
@@ -183,9 +183,9 @@ function DefaultDialog({ setIsOpen, user, getData, editingApp, setEditingApp }) 
       });
     } else {
       setForm({
-        name: '', 
-        home: '', 
-        callback: '', 
+        appName: '', 
+        originUrl: '', 
+        redirectUrl: '', 
         userId: user._id, 
         scope: 'all-credentials'
       });
@@ -205,20 +205,20 @@ function DefaultDialog({ setIsOpen, user, getData, editingApp, setEditingApp }) 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!form.name.trim()) {
-      newErrors.name = 'Application name is required';
+    if (!form.appName.trim()) {
+      newErrors.appName = 'Application name is required';
     }
 
-    if (!form.home.trim()) {
-      newErrors.home = 'Homepage URL is required';
-    } else if (!validateURL(form.home)) {
-      newErrors.home = 'Please enter a valid URL (http:// or https://)';
+    if (!form.originUrl.trim()) {
+      newErrors.originUrl = 'Homepage URL is required';
+    } else if (!validateURL(form.originUrl)) {
+      newErrors.originUrl = 'Please enter a valid URL (http:// or https://)';
     }
 
-    if (!form.callback.trim()) {
-      newErrors.callback = 'Callback URL is required';
-    } else if (!validateURL(form.callback)) {
-      newErrors.callback = 'Please enter a valid URL (http:// or https://)';
+    if (!form.redirectUrl.trim()) {
+      newErrors.redirectUrl = 'Callback URL is required';
+    } else if (!validateURL(form.redirectUrl)) {
+      newErrors.redirectUrl = 'Please enter a valid URL (http:// or https://)';
     }
 
     setErrors(newErrors);
@@ -274,52 +274,52 @@ function DefaultDialog({ setIsOpen, user, getData, editingApp, setEditingApp }) 
           </label>
           <input 
             type="text" 
-            name="name" 
-            id="name" 
+            name="appName" 
+            id="appName" 
             placeholder="Enter your application name" 
             className={`w-full bg-gray-50 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-              errors.name ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
+              errors.appName ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
             }`}
-            value={form.name} 
-            onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+            value={form.appName} 
+            onChange={(e) => setForm(prev => ({ ...prev, appName: e.target.value }))}
           />
-          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          {errors.appName && <p className="text-red-500 text-sm mt-1">{errors.appName}</p>}
         </div>
         
         <div className="form-group">
-          <label htmlFor="home" className="block text-sm font-medium text-gray-700 mb-2">
-            Homepage URL *
+          <label htmlFor="originUrl" className="block text-sm font-medium text-gray-700 mb-2">
+            Origin URL *
           </label>
           <input 
             type="text" 
-            name="home" 
-            id="home" 
+            name="originUrl" 
+            id="originUrl" 
             placeholder="https://yourapp.com" 
             className={`w-full bg-gray-50 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-              errors.home ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
+              errors.originUrl ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
             }`}
-            value={form.home} 
-            onChange={(e) => setForm(prev => ({ ...prev, home: e.target.value }))}
+            value={form.originUrl} 
+            onChange={(e) => setForm(prev => ({ ...prev, originUrl: e.target.value }))}
           />
-          {errors.home && <p className="text-red-500 text-sm mt-1">{errors.home}</p>}
+          {errors.originUrl && <p className="text-red-500 text-sm mt-1">{errors.originUrl}</p>}
         </div>
         
         <div className="form-group">
-          <label htmlFor="callback" className="block text-sm font-medium text-gray-700 mb-2">
-            Callback URL *
+          <label htmlFor="redirectUrl" className="block text-sm font-medium text-gray-700 mb-2">
+            Redirect URL *
           </label>
           <input 
             type="text" 
-            name="callback" 
-            id="callback" 
+            name="redirectUrl" 
+            id="redirectUrl" 
             placeholder="https://yourapp.com/callback" 
             className={`w-full bg-gray-50 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-              errors.callback ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
+              errors.redirectUrl ? 'border-red-300 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
             }`}
-            value={form.callback} 
-            onChange={(e) => setForm(prev => ({ ...prev, callback: e.target.value }))}
+            value={form.redirectUrl} 
+            onChange={(e) => setForm(prev => ({ ...prev, redirectUrl: e.target.value }))}
           />
-          {errors.callback && <p className="text-red-500 text-sm mt-1">{errors.callback}</p>}
+          {errors.redirectUrl && <p className="text-red-500 text-sm mt-1">{errors.redirectUrl}</p>}
         </div>
         
         <button 

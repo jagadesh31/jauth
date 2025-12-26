@@ -7,16 +7,25 @@ const authorizationCodeSchema = new mongoose.Schema({
   },
   clientId: {
     type: String,
-    required: true
+    required: true,
+    index: true
   },
+
   redirectUri: {
     type: String,
     required: true
   },
+
   code: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    index: true
+  },
+
+  scope: {
+    type: String,
+    required: true
   },
   used: {
     type: Boolean,

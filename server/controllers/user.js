@@ -168,7 +168,7 @@ const createCredentials = async (req, res) => {
 
 const updateCredentials = async (req, res) => {
     const { id } = req.params;
-    const { name, home, callback, scope } = req.body;
+    const { appName, originUrls, redirectUrls, allowedScopes } = req.body;
 
     try {
         // Validate URLs
@@ -181,22 +181,21 @@ const updateCredentials = async (req, res) => {
             }
         };
 
-        if (home && !isValidUrl(home)) {
-            return res.status(400).json({ message: 'Invalid homepage URL' });
+        if (originUrls && !originUrls.every(isValidUrl)) {
+            return res.status(400).json({ message: 'Invalid origin URL(s)' });
         }
 
-        if (callback && !isValidUrl(callback)) {
-            return res.status(400).json({ message: 'Invalid callback URL' });
+        if (redirectUrls && !redirectUrls.every(isValidUrl)) {
+            return res.status(400).json({ message: 'Invalid redirect URL(s)' });
         }
 
         const result = await credentialsModel.findByIdAndUpdate(
             id,
             { 
-                name, 
-                home, 
-                callback, 
-                scope, 
-                updatedAt: new Date() 
+                appName, 
+                originUrls, 
+                redirectUrls, 
+                allowedScopes
             },
             { new: true }
         );
@@ -237,9 +236,7 @@ const regenerateClientSecret = async (req, res) => {
         const result = await credentialsModel.findByIdAndUpdate(
             id,
             { 
-                clientSecret: newClientSecret,
-                updatedAt: new Date(),
-                lastSecretRegenerated: new Date()
+                clientSecret: newClientSecret
             },
             { new: true }
         );
@@ -264,7 +261,7 @@ const jauthLogin = async (req, res) => {
     if (!code) return res.status(400).send('No code found');
 
     try {
-        // Exchange code for access token with JAuth
+   
     const tokenResponse =  await axios.post(`${process.env.JAUTH_BASE_URL}/oauth/getToken`,
   {
       code,
@@ -315,9 +312,9 @@ const jauthLogin = async (req, res) => {
         });
 
         console.log('JAuth login successful for user:', user.email);
+
          res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
 
-        // res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
         
     } catch (error) {
         console.error('JAuth callback error:', error);

@@ -5,35 +5,36 @@ var credentialsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    name: {
+    appName: {
         type: String,
         required: true
     },
     clientId: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        index: true
     },
     clientSecret: {
         type: String,
         required: true
     },
-    grant_type: {
-        type: String,
-        default: 'authorization_code'
-    },
-    callback: {
-        type: String,
+    originUrls : {
+        type: [String],
         required: true
     },
-    home: {
-        type: String,
+    redirectUrls: {
+        type: [String],
         required: true
     },
-    scope: {
-        type: String,
-        default: 'all-credentials'
-    }
+   allowedScopes: {
+    type: [String],
+    default: ['profile', 'email']
+   },
+     isActive: {
+    type: Boolean,
+    default: true
+  }
 }, { 
     timestamps: true,
     strict: false 

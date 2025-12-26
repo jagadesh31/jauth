@@ -17,7 +17,8 @@ const RedirectPage = () => {
     const url = new URL(window.location.href);
     return {
       redirectUri: url.searchParams.get('redirect_uri'),
-      clientId: url.searchParams.get('client_id')
+      clientId: url.searchParams.get('client_id'),
+      scope: url.searchParams.get('scope')
     };
   }, []);
 
@@ -45,6 +46,7 @@ const RedirectPage = () => {
         params: {
           client_id: params.clientId,
           redirect_uri: params.redirectUri,
+          scope: params.scope
         }
       });
 

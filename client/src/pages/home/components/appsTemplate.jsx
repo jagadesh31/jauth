@@ -14,7 +14,7 @@ const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
     <div className="app-card bg-white rounded-2xl border border-gray-200 p-6 w-full shadow-md hover:shadow-lg transition-all duration-300">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 truncate">{app.name}</h3>
+          <h3 className="text-xl font-bold text-gray-900 truncate">{app.appName}</h3>
           <p className="text-xs text-gray-500 mt-1">App ID: <span className="font-mono">{app._id}</span></p>
         </div>
         <div className="flex gap-2">
@@ -37,29 +37,29 @@ const AppTemplate = ({ app, onEdit, onDelete, onCopy, onRegenerateSecret }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <div className="info-item">
-          <span className="label font-semibold text-gray-700 text-sm">Homepage URL:</span>
+          <span className="label font-semibold text-gray-700 text-sm">Origin URL:</span>
           <div className="value-container flex items-center gap-2 mt-1">
-            <span className="value text-gray-900 break-all text-sm">{app.home}</span>
+            <span className="value text-gray-900 break-all text-sm">{app.originUrl}</span>
             <button
-              onClick={() => handleCopy(app.home, "home")}
+              onClick={() => handleCopy(app.originUrl, "originUrl")}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               title="Copy URL"
             >
-              {copied === "home" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
+              {copied === "originUrl" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
             </button>
           </div>
         </div>
         
         <div className="info-item">
-          <span className="label font-semibold text-gray-700 text-sm">Callback URL:</span>
+          <span className="label font-semibold text-gray-700 text-sm">Redirect URL:</span>
           <div className="value-container flex items-center gap-2 mt-1">
-            <span className="value text-gray-900 break-all text-sm">{app.callback}</span>
+            <span className="value text-gray-900 break-all text-sm">{app.redirectUrl}</span>
             <button
-              onClick={() => handleCopy(app.callback, "callback")}
+              onClick={() => handleCopy(app.redirectUrl, "redirectUrl")}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               title="Copy URL"
             >
-              {copied === "callback" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
+              {copied === "redirectUrl" ? <FiCheckCircle className="text-green-500 text-sm" /> : <FiCopy className="text-sm" />}
             </button>
           </div>
         </div>
