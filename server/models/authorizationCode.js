@@ -1,19 +1,34 @@
 const mongoose = require('mongoose');
 
-var authorizationCodeSchema = new mongoose.Schema({
+const authorizationCodeSchema = new mongoose.Schema({
   userId: {
     type: String,
+    required: true
+  },
+  clientId: {
+    type: String,
+    required: true
+  },
+  redirectUri: {
+    type: String,
+    required: true
   },
   code: {
     type: String,
+    required: true,
+    unique: true
   },
-  createdAt: {
+  used: {
+    type: Boolean,
+    default: false
+  },
+  expiresAt: {
     type: Date,
-    default: Date.now,
-    expires: 300,
-  },
-}, { strict: false });
+    required: true,
+    index: { expires: 0 }
+  }
+}, {
+  timestamps: true
+});
 
-let authorizationCodeModel = mongoose.model('authorizationCode', authorizationCodeSchema);
-
-module.exports = authorizationCodeModel;
+module.exports = mongoose.model('AuthorizationCode', authorizationCodeSchema);
