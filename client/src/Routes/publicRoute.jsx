@@ -1,5 +1,5 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { authContext } from '../contexts/authContext';
 
 import Loader from '../components/loader';
@@ -9,9 +9,14 @@ import Header from '../components/header';
 import { useState} from 'react';
 
 export default function PublicRoute() {
-  const { user, authLoading } = useContext(authContext);
+  const { user, authLoading ,autoFetch} = useContext(authContext);
   const [isOpen, setIsOpen] = useState(false);
 
+  
+    useEffect(() => {
+      autoFetch();
+    }, []);
+    
 
   if (authLoading) return <Loader />;
   if (user) return <Navigate to="/home" replace />;

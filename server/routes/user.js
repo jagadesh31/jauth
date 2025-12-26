@@ -11,13 +11,15 @@ const {
     updateCredentials,
     deleteCredentials,
     regenerateClientSecret,
+    jauthLogin
 } = require('../controllers/user');
 const { verifyAccessToken } = require('../middleware/verify');
 
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.get('/logout',verifyAccessToken ,logoutUser);
+router.get('/jauth/callback', jauthLogin);
+router.get('/logout',logoutUser);
 
 // Protected routes
 router.get('/userInfo', verifyAccessToken, getUserInfo);

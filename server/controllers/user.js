@@ -6,6 +6,7 @@ require('dotenv').config();
 let userModel = require('../models/user.js');
 const credentialsModel = require('../models/credentials.js');
 const { generateAccessToken, generateRefreshToken, randomCode } = require('../utils/auth.js');
+const { default: axios } = require('axios');
 
 
 const loginUser = async (req, res) => {
@@ -254,6 +255,75 @@ const regenerateClientSecret = async (req, res) => {
 };
 
 
+const jauthLogin = async (req, res) => {
+    const code = req.query.code;
+
+    console.log(code)
+
+    if (!code) return res.status(400).send('No code found');
+
+    try {
+        // Exchange code for access token with JAuth
+        const tokenResponse = await axios.get(`${process.env.JAUTH_BASE_URL}/oauth/getToken`, {
+            params: {
+                code,
+                client_id: process.env.JAUTH_CLIENT_ID, 
+                client_secret: process.env.JAUTH_CLIENT_SECRET,
+                redirect_uri: `${process.env.SERVER_BASE_URL}/user/jauth/callback`
+            }
+        });
+
+        const { access_token } = tokenResponse.data;
+
+        console.log('Access Token:', access_token);
+
+        const userResponse = await axios.get(`${process.env.JAUTH_BASE_URL}/oauth/getUser`, {
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        const jauthUser = userResponse.data;
+        
+
+        let user = await userModel.findOne({ email: jauthUser.email });
+        if (!user) {
+            user = await userModel.create({
+                email: jauthUser.email,
+                username: jauthUser.username,
+                name: jauthUser.name,
+            });
+        }
+
+
+        const token = generateToken(user._id);
+        
+        res.cookie('access_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.cookie('refresh_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        console.log('JAuth login successful for user:', user.email);
+        // res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
+
+        // res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
+        
+    } catch (error) {
+        console.error('JAuth callback error:', error);
+        res.redirect(`${process.env.client_url}/login?error=jauth_failed`);
+    }
+};
+
+
 
 module.exports = {
     registerUser,
@@ -264,5 +334,6 @@ module.exports = {
     updateCredentials,
     deleteCredentials,
     regenerateClientSecret,
-    logoutUser
+    logoutUser,
+    jauthLogin
 };
