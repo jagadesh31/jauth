@@ -30,53 +30,55 @@ const getCode = async (req, res) => {
 
 
 const getToken = async (req, res) => {
-    const { code, client_id, client_secret, redirect_uri } = req.body;
-    try {
-        // Verify client credentials first
-        const client = await credentialsModel.findOne({ 
-            clientId: client_id, 
-            clientSecret: client_secret 
-        });
+const getToken = async (req, res) => {
+  const { code, client_id, client_secret, redirect_uri } = req.body;
 
-        
-        if (!client) {
-            return res.status(401).json({ message: 'Invalid client credentials' });
-        }
+  try {
+    // 1. Verify client credentials
+    const client = await credentialsModel.findOne({
+      clientId: client_id,
+      clientSecret: client_secret
+    });
 
-       //if (result.clientId !== client_id) return 401;
-       //if (result.redirectUri !== redirect_uri) return 401;
-
-        const result = await authorizationCodeModel.findOne({ code });
-        if (!result) {
-            return res.status(400).json({ message: 'Invalid authorization code' });
-        }
-
-        const accessToken = generateAccessToken({ userId: result.userId });
-        const refreshToken = generateRefreshToken({ userId: result.userId });
-        // Set tokens in httpOnly cookies
-        res.cookie('access_token', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 15 * 60 * 1000 // 15 minutes
-        });
-        res.cookie('refresh_token', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-        console.log('Tokens set in cookies for userId:', result.userId);
-        res.status(200).json({
-            message: 'Tokens set in cookies',
-            token_type: 'Bearer',
-            expires_in: 900
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
+    if (!client) {
+      return res.status(401).json({ error: 'invalid_client' });
     }
+
+    // 2. Verify authorization code
+    const result = await authorizationCodeModel.findOne({ code });
+    if (!result) {
+      return res.status(400).json({ error: 'invalid_grant' });
+    }
+
+    // Optional but RECOMMENDED checks
+    if (result.clientId !== client_id) {
+      return res.status(400).json({ error: 'invalid_grant' });
+    }
+  //  if (result.redirectUri !== redirect_uri) {
+ //     return res.status(400).json({ error: 'invalid_grant' });
+  //  }
+
+    // 3. Generate tokens
+    const accessToken = generateAccessToken({ userId: result.userId });
+    const refreshToken = generateRefreshToken({ userId: result.userId });
+
+    // 4. (Optional) Delete used authorization code
+    await authorizationCodeModel.deleteOne({ code });
+
+    // 5. Return OAuth-compliant JSON response
+    return res.status(200).json({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      token_type: 'Bearer',
+      expires_in: 15 * 60 // seconds
+    });
+
+  } catch (err) {
+    console.error('Token error:', err);
+    return res.status(500).json({ error: 'server_error' });
+  }
 };
+
 
 const getUser = async (req, res) => {
   // 1. Read Authorization header
