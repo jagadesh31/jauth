@@ -2,7 +2,6 @@ const jwt = require('jsonwebtoken');
 
 function verifyAccessToken(req, res, next) {
   const token = req.cookies['access_token'];
-  console.log('Verifying access token:', token);
   if (!token) return res.status(401).json({ message: 'No token provided' });
   try {
     const decoded = jwt.verify(token, process.env.ACCESS_SECRET);

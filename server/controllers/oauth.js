@@ -41,7 +41,9 @@ const getCode = async (req, res) => {
       used: false
     });
 
-    return res.redirect(`${redirect_uri}?code=${code}`);
+    console.log(`Generated code ${code} for user ${req.userId} and client ${client_id}`);
+
+    return res.status(200).json({ code });
 
   } catch (err) {
     console.error('getCode error:', err);
@@ -66,11 +68,15 @@ const getToken = async (req, res) => {
       return res.status(401).json({ error: 'invalid_client' });
     }
 
+    console.log(`Client ${client_id} requesting token with code ${code}`);
+
     // Validate authorization code
     const authCode = await authorizationCodeModel.findOne({ code });
     if (!authCode) {
       return res.status(400).json({ error: 'invalid_grant' });
     }
+
+    console.log(`Found auth code:`, authCode);
 
     if (authCode.used) {
       return res.status(400).json({ error: 'authorization_code_used' });

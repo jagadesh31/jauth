@@ -12,17 +12,16 @@ const RedirectPage = () => {
   const [showAuthUI, setShowAuthUI] = useState(false);
   const [user, setUser] = useState(null);
 
-  // Extract OAuth params
+
   const params = useMemo(() => {
     const url = new URL(window.location.href);
     return {
       redirectUri: url.searchParams.get('redirect_uri'),
-      clientId: url.searchParams.get('client_id'),
-      state: url.searchParams.get('state')
+      clientId: url.searchParams.get('client_id')
     };
   }, []);
 
-  // Validate redirect_uri
+  
   const isValidRedirectUri = useCallback(() => {
     if (!params.redirectUri) {
       toast.error('Invalid redirect URI');
@@ -37,24 +36,19 @@ const RedirectPage = () => {
     }
   }, [params.redirectUri]);
 
-  /**
-   * Call backend to generate authorization code
-   * Backend WILL redirect automatically
-   */
+
   const requestAuthorizationCode = useCallback(async () => {
     try {
       setLoading(true);
 
-      await api.get('/oauth/getCode', {
+      let res = await api.get('/oauth/getCode', {
         params: {
           client_id: params.clientId,
           redirect_uri: params.redirectUri,
-          state: params.state
         }
       });
 
-      // ❗ DO NOT do anything after this
-      // Browser will redirect away
+    window.location.replace(`${params.redirectUri}?code=${res.data.code}`);
 
     } catch (error) {
       console.error('Authorization error:', error);
@@ -65,7 +59,8 @@ const RedirectPage = () => {
     }
   }, [params]);
 
-  // Check session on mount
+
+ 
   useEffect(() => {
     if (!isValidRedirectUri()) {
       setLoading(false);
@@ -78,10 +73,9 @@ const RedirectPage = () => {
         const res = await api.get('/user/userInfo');
         setUser(res.data);
 
-        // User logged in → request code
+
         await requestAuthorizationCode();
       } catch (err) {
-        // Not logged in → show auth UI
         setShowAuthUI(true);
         setLoading(false);
       }
@@ -90,7 +84,7 @@ const RedirectPage = () => {
     checkSession();
   }, [isValidRedirectUri, requestAuthorizationCode]);
 
-  // After successful login
+  
   const onAuthSuccess = async () => {
     setShowAuthUI(false);
     await requestAuthorizationCode();

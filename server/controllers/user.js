@@ -265,14 +265,15 @@ const jauthLogin = async (req, res) => {
 
     try {
         // Exchange code for access token with JAuth
-        const tokenResponse = await axios.post(`${process.env.JAUTH_BASE_URL}/oauth/getToken`, {
-            params: {
-                code,
-                client_id: process.env.JAUTH_CLIENT_ID, 
-                client_secret: process.env.JAUTH_CLIENT_SECRET,
-                redirect_uri: `${process.env.SERVER_BASE_URL}/user/jauth/callback`
-            }
-        });
+    const tokenResponse =  await axios.post(`${process.env.JAUTH_BASE_URL}/oauth/getToken`,
+  {
+      code,
+      client_id: process.env.JAUTH_CLIENT_ID,
+      client_secret: process.env.JAUTH_CLIENT_SECRET,
+      redirect_uri: `${process.env.SERVER_BASE_URL}/user/jauth/callback`
+  }
+);
+
 
         const { access_token } = tokenResponse.data;
 
