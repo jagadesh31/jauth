@@ -297,16 +297,16 @@ const jauthLogin = async (req, res) => {
         }
 
 
-        const token = generateToken(user._id);
-        
-        res.cookie('access_token', token, {
+        let accessToken = generateAccessToken({ userId: user._id });
+        let refreshToken = generateRefreshToken({ userId: user._id });
+
+        res.cookie('access_token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 15 * 60 * 1000 // 15 minutes
         });
-
-        res.cookie('refresh_token', token, {
+        res.cookie('refresh_token', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
