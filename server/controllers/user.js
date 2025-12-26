@@ -313,7 +313,7 @@ const jauthLogin = async (req, res) => {
         });
 
         console.log('JAuth login successful for user:', user.email);
-        // res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
+         res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
 
         // res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
         
