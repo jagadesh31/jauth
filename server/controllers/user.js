@@ -8,6 +8,7 @@ let userModel = require('../models/user.js');
 const credentialsModel = require('../models/credentials.js');
 const { generateAccessToken, generateRefreshToken, randomCode } = require('../utils/auth.js');
 
+//test
 
 const loginUser = async (req, res) => {
     try {
