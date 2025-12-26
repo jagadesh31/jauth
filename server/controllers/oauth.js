@@ -63,7 +63,7 @@ const getToken = async (req, res) => {
     const refreshToken = generateRefreshToken({ userId: result.userId });
 
     // 4. (Optional) Delete used authorization code
-    await authorizationCodeModel.deleteOne({ code });
+  
 
     // 5. Return OAuth-compliant JSON response
     return res.status(200).json({
