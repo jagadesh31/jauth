@@ -6,9 +6,9 @@ const {
 	getUser,
 	authorizeApp
 } = require('../controllers/oauth');
-
+const { verifyAccessToken } = require('../middleware/verify');
 // OAuth flows
-router.get('/getCode', getCode);
+router.get('/getCode',verifyAccessToken, getCode);
 router.post('/getToken', getToken);
 router.get('/getUser', getUser);
 router.get('/authorize', authorizeApp);
