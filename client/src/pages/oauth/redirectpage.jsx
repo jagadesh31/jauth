@@ -1,116 +1,159 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
-import React from 'react';
-import Loader from '../../components/loader.jsx'
-import {useState,useEffect,useContext} from 'react'
+// pages/oauth/RedirectPage.jsx
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Loader from '../../components/loader.jsx';
+import AuthUI from './authUI.jsx';
 import api from '../../api/axios.js';
 
 const RedirectPage = () => {
-let [loading,setLoading] = useState(false);
-let url = new URL(window.location.href);
-let params = url.searchParams; 
+  const [loading, setLoading] = useState(true);
+  const [showAuthUI, setShowAuthUI] = useState(false);
+  const [user, setUser] = useState(null);
 
-let client_id = params.get('client_id');
-let redirect_url = params.get('redirect_uri');
-let response_type = params.get('response_type');
-let scope = params.get('scope');
+  // Extract OAuth params from URL
+  const params = useMemo(() => {
+    const url = new URL(window.location.href);
+    return {
+      redirectUri: url.searchParams.get('redirect_uri'),
+      state: url.searchParams.get('state'),
+      clientId: url.searchParams.get('client_id'),
+    };
+  }, []);
 
-console.log('OAuth params:', { client_id, redirect_url, response_type, scope });
-
-// ADD useEffect to auto-submit when component loads and user is logged in
-useEffect(() => {
-  const token = localStorage.getItem('OauthToken');
-  if (token) {
-    console.log('Auto-submitting because user is already logged in');
-    submitHandler();
-  }
-}, []);
-
-const submitHandler = () => {
-  const token = localStorage.getItem('OauthToken');
-  console.log('Token:', token);
-  
-  if (token) {
-    console.log('token exists');
-    api
-      .get(`/user/userInfo`)
-      .then(res => {
-        setLoading(true);
-        console.log('User data:', res.data);
-
-        api
-            .get(`/user/getCode?userId=${res.data._id}`)
-            .then(r => {
-              console.log('Full getCode response:', r.data);
-              console.log('Authorization code:', r.data.code);
-              
-              const finalUrl = new URL(redirect_url);
-              finalUrl.searchParams.set('code', r.data.code);
-              
-              // Add state if present
-              const state = params.get('state');
-              if (state) {
-                finalUrl.searchParams.set('state', state);
-              }
-              
-              console.log('Redirecting to:', finalUrl.toString());
-              window.location.href = finalUrl.toString();
-            })
-            .catch(err => {
-              console.log('Error getting code:', err);
-              setLoading(false);
-          });
-      })
-      .catch(err => {
-        console.log('Error getting user info:', err);
-        openNewTab();
-      });
-  } else {
-    console.log('No token found');
-    // Don't auto-open new tab here, let user click the button
-  }
-};
-
-const openNewTab = () => {
-  console.log('Opening OAuth login window');
-  
-  const loginUrl = `${import.meta.env.VITE_CLIENT_BASE_URL}/login?redirect=true&oauth=true&client_id=${client_id}`;
-  const popup = window.open(loginUrl, '_blank', 'width=500,height=600');
-
-  const checkPopup = setInterval(() => {
-    if (popup.closed) {
-      clearInterval(checkPopup);
-      console.log('Popup closed, checking auth status...');
-      
-      const token = localStorage.getItem('OauthToken');
-      if (token) {
-        console.log('User logged in after popup closed');
-        submitHandler(); // Retry with new token
-      } else {
-        console.log('User did not log in');
-      }
+  // Validate redirect URI
+  const isValidRedirectUri = useCallback(() => {
+    if (!params.redirectUri) {
+      toast.error('Invalid redirect URI');
+      return false;
     }
-  }, 500);
-};
+    try {
+      new URL(params.redirectUri);
+      return true;
+    } catch {
+      toast.error('Invalid redirect URI format');
+      return false;
+    }
+  }, [params.redirectUri]);
 
-  
+  // Redirect with authorization code
+  const redirectWithCode = useCallback(
+    (code) => {
+      try {
+        const finalUrl = new URL(params.redirectUri);
+        finalUrl.searchParams.set('code', code);
+        if (params.state) {
+          finalUrl.searchParams.set('state', params.state);
+        }
+        // Replace to avoid back button issues
+        window.location.replace(finalUrl.toString());
+      } catch (error) {
+        console.error('Redirect error:', error);
+        toast.error('Failed to redirect. Please try again.');
+        setLoading(false);
+      }
+    },
+    [params.redirectUri, params.state]
+  );
+
+  // Generate authorization code after user login
+  const authorize = useCallback(
+    async (userData) => {
+      if (!userData || !userData._id) {
+        // No user logged in - show auth popup
+        setShowAuthUI(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { data } = await api.get(`/oauth/getCode?userId=${userData._id}`);
+
+        if (!data.code) {
+          throw new Error('No authorization code received');
+        }
+
+        // Redirect with code
+        redirectWithCode(data.code);
+      } catch (error) {
+        console.error('Authorization error:', error);
+        toast.error(error.response?.data?.message || 'Authorization failed');
+        setLoading(false);
+      }
+    },
+    [redirectWithCode]
+  );
+
+  // Check user session on mount
+  useEffect(() => {
+    if (!isValidRedirectUri()) {
+      setLoading(false);
+      return;
+    }
+
+    const checkSession = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/user/userInfo');
+        setUser(res.data);
+
+        // User exists, get authorization code
+        await authorize(res.data);
+      } catch (error) {
+        console.error('Session check error:', error);
+        // User not logged in - show auth UI
+        setShowAuthUI(true);
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+  }, [isValidRedirectUri, authorize]);
+
+  // Handle successful auth
+  const onAuthSuccess = async () => {
+    setShowAuthUI(false);
+    setLoading(true);
+
+    try {
+      const res = await api.get('/user/userInfo');
+      setUser(res.data);
+
+      // Get authorization code and redirect
+      await authorize(res.data);
+    } catch (error) {
+      console.error('Auth success check error:', error);
+      toast.error('Failed to complete authorization');
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className={`body flex justify-center items-center h-screen w-screen bg-black`}>
-      {loading && <Loader/>}
-      {!loading && (
-        <div className="mainContent text-black bg-black flex flex-col gap-7 w-[90%] max-w-[1200px] min-w-[400px] items-center justify-center">
-          <div className="wrapper">
-            <span 
-              className="inline-block text-black bg-[#F7F4ED] text-[18px] md:text-[20px] rounded-xl py-2 px-4 cursor-pointer hover:bg-gray-100 transition-colors" 
-              onClick={submitHandler}
-            >
-              Login With Jauth
-            </span>
-          </div>
-        </div>
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
+      {/* Loading state - full screen loader */}
+      {loading && <Loader />}
+
+      {/* Auth modal - overlays loader */}
+      {showAuthUI && (
+        <AuthUI 
+          onSuccess={onAuthSuccess}
+          loading={loading}
+        />
       )}
-    </div>
+    </>
   );
 };
 

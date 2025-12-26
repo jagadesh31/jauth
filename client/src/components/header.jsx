@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { IoNotificationsOutline } from "react-icons/io5";
 import { authContext } from '../contexts/authContext';
 
-const Header = ({ setIsOpen}) => {
-  const { user, logout } = useContext(authContext);
+const Header = () => {
+  const { user, logout, jauthLogin } = useContext(authContext);
   const navigate = useNavigate();
 
   return (
@@ -32,7 +32,7 @@ const Header = ({ setIsOpen}) => {
           ) : (
             <button 
               className='text-[#F7F4ED] bg-black py-2 px-4 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors duration-200 border border-[#F7F4ED]'
-              onClick={() => setIsOpen(true)}
+              onClick={jauthLogin}
             >
               Get Started
             </button>

@@ -1,5 +1,5 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { authContext } from '../contexts/authContext';
 
 import Loader from '../components/loader';
@@ -7,7 +7,12 @@ import Footer from '../components/footer';
 import Header from '../components/header';
 
 export default function ProtectedRoute() {
-  const { user, authLoading } = useContext(authContext);
+  const { user, authLoading,autoFetch } = useContext(authContext);
+
+  useEffect(() => {
+    autoFetch();
+  }, []);
+  
 
   if (authLoading) return <Loader />;
   if (!user) return <Navigate to="/" replace />;

@@ -13,16 +13,21 @@ const { randomCode, generateAccessToken, generateRefreshToken } = require('../ut
 
 
 const getCode = async (req, res) => {
-    let { userId } = req.query;
-    let code = randomCode();
-    try {
-        let result = await authorizationCodeModel.create({ userId: userId, code: code });
-        res.status(200).json({ code: result.code });
-    } catch (err) {
-        console.log('Error in code generation', err);
-        res.status(500).json({ message: 'Server Error' });
-    }
+  const { client_id, redirect_uri } = req.query;
+
+  const code = randomCode();
+
+  await authorizationCodeModel.create({
+    code,
+    clientId: client_id,
+    redirectUri: redirect_uri,
+    expiresAt: Date.now() + 60_000,
+    used: false
+  });
+
+  res.json({ code });
 };
+
 
 const getToken = async (req, res) => {
     const { code, client_id, client_secret, redirect_uri } = req.body;
@@ -32,13 +37,20 @@ const getToken = async (req, res) => {
             clientId: client_id, 
             clientSecret: client_secret 
         });
+
+        
         if (!client) {
             return res.status(401).json({ message: 'Invalid client credentials' });
         }
+
+       if (result.clientId !== client_id) return 401;
+       if (result.redirectUri !== redirect_uri) return 401;
+
         const result = await authorizationCodeModel.findOne({ code });
         if (!result) {
             return res.status(400).json({ message: 'Invalid authorization code' });
         }
+
         const accessToken = generateAccessToken({ userId: result.userId });
         const refreshToken = generateRefreshToken({ userId: result.userId });
         // Set tokens in httpOnly cookies
@@ -54,6 +66,7 @@ const getToken = async (req, res) => {
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
+        console.log('Tokens set in cookies for userId:', result.userId);
         res.status(200).json({
             message: 'Tokens set in cookies',
             token_type: 'Bearer',
@@ -101,6 +114,7 @@ const authorizeApp = async (req, res) => {
     try {
 
         const client = await credentialsModel.findOne({ clientId: client_id });
+
         if (!client) {
             return res.status(400).json({ message: 'Invalid client_id' });
         }

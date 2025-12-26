@@ -23,7 +23,6 @@ function App() {
         { path: '/docs', element: <Docs /> },
       ],
     },
-    { path: '/redirect', element: <RedirectPage /> },
     {
       element: <ProtectedRoute />,
       children: [
@@ -31,6 +30,7 @@ function App() {
       ],
     },
     { path: '*', element: <NotFound /> },
+    { path: '/redirect', element: <RedirectPage /> }
   ]);
 
   return (
