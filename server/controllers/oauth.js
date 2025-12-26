@@ -43,8 +43,8 @@ const getToken = async (req, res) => {
             return res.status(401).json({ message: 'Invalid client credentials' });
         }
 
-       if (result.clientId !== client_id) return 401;
-       if (result.redirectUri !== redirect_uri) return 401;
+       //if (result.clientId !== client_id) return 401;
+       //if (result.redirectUri !== redirect_uri) return 401;
 
         const result = await authorizationCodeModel.findOne({ code });
         if (!result) {
@@ -79,27 +79,43 @@ const getToken = async (req, res) => {
 };
 
 const getUser = async (req, res) => {
-    const token = req.cookies['access_token'];
-    if (!token) {
-        return res.status(401).json({ message: 'No token provided' });
+  // 1. Read Authorization header
+  const authHeader = req.headers.authorization;
+
+  // 2. Validate header presence
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+
+  // 3. Extract token
+  const token = authHeader.split(' ')[1];
+
+  try {
+    // 4. Verify token
+    const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
+
+    // 5. Fetch user
+    const userInfo = await userModel.findById(decoded.userId);
+    if (!userInfo) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    try {
-        const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
-        const userInfo = await userModel.findById(decoded.userId);
-        if (!userInfo) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.status(200).json(userInfo);
-    } catch (err) {
-        if (err.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Token expired' });
-        } else if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ message: 'Invalid token' });
-        }
-        console.error('Error fetching user info:', err);
-        res.status(500).json({ message: 'Internal server error' });
+
+    // 6. Success
+    res.status(200).json(userInfo);
+
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
     }
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    console.error('Error fetching user info:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
+
 
 const authorizeApp = async (req, res) => {
     const { client_id, redirect_uri, response_type, scope } = req.query;
