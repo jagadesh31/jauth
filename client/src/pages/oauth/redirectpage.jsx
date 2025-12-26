@@ -68,7 +68,7 @@ const RedirectPage = () => {
 
       try {
         setLoading(true);
-        const { data } = await api.get(`/oauth/getCode?userId=${userData._id}`);
+        const { data } = await api.get(`/oauth/getCode`);
 
         if (!data.code) {
           throw new Error('No authorization code received');
