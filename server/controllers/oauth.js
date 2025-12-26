@@ -1,40 +1,62 @@
-
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const bcrypt = require('bcrypt');
 require('dotenv').config();
-const userModel = require('../models/user.js');
-const verificationLinkModel = require('../models/verificationLink.js');
-const credentialsModel = require('../models/credentials.js');
-const authorizationCodeModel = require('../models/authorizationCode.js');
+
+const userModel = require('../models/user');
+const credentialsModel = require('../models/credentials');
+const authorizationCodeModel = require('../models/authorizationCode');
 const { randomCode, generateAccessToken, generateRefreshToken } = require('../utils/auth');
 
-
-
-
+/* ======================================================
+   AUTHORIZATION CODE ENDPOINT
+   (User must already be authenticated via middleware)
+====================================================== */
 const getCode = async (req, res) => {
-  const { client_id, redirect_uri } = req.query;
+  try {
+    const { client_id, redirect_uri } = req.query;
 
-  const code = randomCode();
+    // userId injected by auth middleware
+    if (!req.userId) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
 
-  await authorizationCodeModel.create({
-    code,
-    clientId: client_id,
-    redirectUri: redirect_uri,
-    expiresAt: Date.now() + 60_000,
-    used: false
-  });
+    // Validate client existence
+    const client = await credentialsModel.findOne({ clientId: client_id });
+    if (!client) {
+      return res.status(400).json({ error: 'invalid_client' });
+    }
 
-  res.json({ code });
+    // OPTIONAL (commented as requested)
+    // if (client.redirectUri !== redirect_uri) {
+    //   return res.status(400).json({ error: 'invalid_redirect_uri' });
+    // }
+
+    const code = randomCode();
+
+    await authorizationCodeModel.create({
+      userId: req.userId,
+      clientId: client_id,
+      redirectUri: redirect_uri,
+      code,
+      expiresAt: Date.now() + 60 * 1000, // 1 minute
+      used: false
+    });
+
+    return res.redirect(`${redirect_uri}?code=${code}`);
+
+  } catch (err) {
+    console.error('getCode error:', err);
+    return res.status(500).json({ error: 'server_error' });
+  }
 };
 
-
-const getToken = async (req, res) => {
+/* ======================================================
+   TOKEN ENDPOINT
+====================================================== */
 const getToken = async (req, res) => {
   const { code, client_id, client_secret, redirect_uri } = req.body;
 
   try {
-    // 1. Verify client credentials
+    // Validate client credentials
     const client = await credentialsModel.findOne({
       clientId: client_id,
       clientSecret: client_secret
@@ -44,66 +66,72 @@ const getToken = async (req, res) => {
       return res.status(401).json({ error: 'invalid_client' });
     }
 
-    // 2. Verify authorization code
-    const result = await authorizationCodeModel.findOne({ code });
-    if (!result) {
+    // Validate authorization code
+    const authCode = await authorizationCodeModel.findOne({ code });
+    if (!authCode) {
       return res.status(400).json({ error: 'invalid_grant' });
     }
 
-    // Optional but RECOMMENDED checks
-    if (result.clientId !== client_id) {
-      return res.status(400).json({ error: 'invalid_grant' });
+    if (authCode.used) {
+      return res.status(400).json({ error: 'authorization_code_used' });
     }
-  //  if (result.redirectUri !== redirect_uri) {
- //     return res.status(400).json({ error: 'invalid_grant' });
-  //  }
 
-    // 3. Generate tokens
-    const accessToken = generateAccessToken({ userId: result.userId });
-    const refreshToken = generateRefreshToken({ userId: result.userId });
+    // OPTIONAL (commented as requested)
+    // if (authCode.clientId !== client_id) {
+    //   return res.status(400).json({ error: 'invalid_grant' });
+    // }
 
-    // 4. (Optional) Delete used authorization code
-  
+    // OPTIONAL (commented as requested)
+    // if (authCode.redirectUri !== redirect_uri) {
+    //   return res.status(400).json({ error: 'invalid_grant' });
+    // }
 
-    // 5. Return OAuth-compliant JSON response
+    if (authCode.expiresAt < Date.now()) {
+      return res.status(400).json({ error: 'authorization_code_expired' });
+    }
+
+    // Generate tokens
+    const accessToken = generateAccessToken({ userId: authCode.userId });
+    const refreshToken = generateRefreshToken({ userId: authCode.userId });
+
+    // Mark code as used (important)
+    authCode.used = true;
+    await authCode.save();
+
     return res.status(200).json({
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: 'Bearer',
-      expires_in: 15 * 60 // seconds
+      expires_in: 900
     });
 
   } catch (err) {
-    console.error('Token error:', err);
+    console.error('getToken error:', err);
     return res.status(500).json({ error: 'server_error' });
   }
 };
 
-
+/* ======================================================
+   USER INFO ENDPOINT (Protected Resource)
+====================================================== */
 const getUser = async (req, res) => {
-  // 1. Read Authorization header
   const authHeader = req.headers.authorization;
 
-  // 2. Validate header presence
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'No token provided' });
   }
 
-  // 3. Extract token
   const token = authHeader.split(' ')[1];
 
   try {
-    // 4. Verify token
     const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
 
-    // 5. Fetch user
     const userInfo = await userModel.findById(decoded.userId);
     if (!userInfo) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // 6. Success
-    res.status(200).json(userInfo);
+    return res.status(200).json(userInfo);
 
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -113,56 +141,47 @@ const getUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    console.error('Error fetching user info:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('getUser error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-
+/* ======================================================
+   AUTHORIZE ENDPOINT
+====================================================== */
 const authorizeApp = async (req, res) => {
-    const { client_id, redirect_uri, response_type, scope } = req.query;
+  const { client_id, redirect_uri, response_type, scope } = req.query;
 
-    console.log('OAuth Authorization Request:', {
-        client_id,
-        redirect_uri, 
-        response_type,
-        scope
-    });
-
-    try {
-
-        const client = await credentialsModel.findOne({ clientId: client_id });
-
-        if (!client) {
-            return res.status(400).json({ message: 'Invalid client_id' });
-        }
-
-
-        if (response_type !== 'code') {
-            return res.status(400).json({ message: 'Unsupported response_type' });
-        }
-
-
-        const CLIENT_URL = process.env.CLIENT_BASE_URL || 'https://jauth.jagadesh31.tech';
-        
-        res.redirect(
-            `${CLIENT_URL}/redirect?` +
-            `client_id=${client_id}&` +
-            `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
-            `response_type=${response_type}&` +
-            `scope=${encodeURIComponent(scope || '')}`
-        );
-
-    } catch (err) {
-        console.log('OAuth Authorization error:', err);
-        res.status(500).json({ message: 'Server Error' });
+  try {
+    const client = await credentialsModel.findOne({ clientId: client_id });
+    if (!client) {
+      return res.status(400).json({ message: 'Invalid client_id' });
     }
+
+    if (response_type !== 'code') {
+      return res.status(400).json({ message: 'Unsupported response_type' });
+    }
+
+    const CLIENT_URL =
+      process.env.CLIENT_BASE_URL || 'https://jauth.jagadesh31.tech';
+
+    return res.redirect(
+      `${CLIENT_URL}/redirect?` +
+        `client_id=${client_id}&` +
+        `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
+        `response_type=${response_type}&` +
+        `scope=${encodeURIComponent(scope || '')}`
+    );
+
+  } catch (err) {
+    console.error('authorizeApp error:', err);
+    return res.status(500).json({ message: 'Server Error' });
+  }
 };
 
-
 module.exports = {
-    getCode,
-    getToken,
-    getUser,
-    authorizeApp
+  getCode,
+  getToken,
+  getUser,
+  authorizeApp
 };
