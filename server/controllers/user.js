@@ -265,7 +265,7 @@ const jauthLogin = async (req, res) => {
 
     try {
         // Exchange code for access token with JAuth
-        const tokenResponse = await axios.get(`${process.env.JAUTH_BASE_URL}/oauth/getToken`, {
+        const tokenResponse = await axios.post(`${process.env.JAUTH_BASE_URL}/oauth/getToken`, {
             params: {
                 code,
                 client_id: process.env.JAUTH_CLIENT_ID, 
