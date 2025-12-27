@@ -37,6 +37,8 @@ const AuthUI = ({ onSuccess, loading }) => {
         isSubmitting={isSubmitting}
         setIsSubmitting={setIsSubmitting}
       />
+
+      
     ),
     SigninWithEmail: (
       <SigninWithEmail
@@ -53,33 +55,13 @@ const AuthUI = ({ onSuccess, loading }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#F7F4ED]">
       <div 
         className="absolute inset-0 backdrop-blur-sm bg-black/30"
         onClick={() => !isSubmitting && setCurrentDialog('DefaultDialog')}
       />
 
-      {/* Modal */}
       <div className="relative z-10 w-full max-w-[450px] rounded-2xl shadow-2xl overflow-hidden bg-white">
-        {/* Close button */}
-        <div className="flex justify-end p-4 border-b border-gray-100">
-          <button
-            onClick={() => {
-              if (!isSubmitting) {
-                setCurrentDialog('DefaultDialog');
-                resetForm();
-              }
-            }}
-            disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 text-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Close dialog"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
         <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
           {dialog[currentDialog]}
         </div>
@@ -90,12 +72,11 @@ const AuthUI = ({ onSuccess, loading }) => {
 
 export default AuthUI;
 
-// DefaultDialog
 function DefaultDialog({ setCurrentDialog }) {
   return (
     <div className="flex flex-col justify-center items-center gap-6 w-full">
       <div className="text-center">
-        <div className="text-4xl sm:text-5xl text-blue-600 mb-4 flex justify-center">
+        <div className="text-4xl sm:text-5xl text-black mb-4 flex justify-center">
           {email_icon}
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -108,7 +89,7 @@ function DefaultDialog({ setCurrentDialog }) {
 
       <div className="space-y-3 w-full">
         <button
-          className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 sm:py-4 flex items-center justify-center gap-3 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 font-medium text-gray-700"
+          className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 sm:py-4 flex items-center justify-center gap-3 hover:border-gray-700 hover:bg-blue-50 transition-all duration-200 font-medium text-gray-700"
           onClick={() => setCurrentDialog('SignupWithEmail')}
         >
           <span className="text-xl sm:text-2xl">{email_icon}</span>
@@ -121,7 +102,7 @@ function DefaultDialog({ setCurrentDialog }) {
         <p className="text-gray-600 text-sm sm:text-base">
           Already have an account?{' '}
           <button
-            className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition-colors"
+            className="text-black hover:text-gray-700 font-semibold cursor-pointer transition-colors"
             onClick={() => setCurrentDialog('Signin')}
           >
             Sign in
@@ -136,12 +117,11 @@ function DefaultDialog({ setCurrentDialog }) {
   );
 }
 
-// Signin Dialog
 function Signin({ setCurrentDialog }) {
   return (
     <div className="flex flex-col justify-center items-center gap-6 w-full">
       <div className="text-center">
-        <div className="text-4xl sm:text-5xl text-blue-600 mb-4 flex justify-center">
+        <div className="text-4xl sm:text-5xl text-black mb-4 flex justify-center">
           {email_icon}
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -154,7 +134,7 @@ function Signin({ setCurrentDialog }) {
 
       <div className="space-y-3 w-full">
         <button
-          className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 sm:py-4 flex items-center justify-center gap-3 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 font-medium text-gray-700"
+          className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 sm:py-4 flex items-center justify-center gap-3 hover:border-gray-700 hover:bg-blue-50 transition-all duration-200 font-medium text-gray-700"
           onClick={() => setCurrentDialog('SigninWithEmail')}
         >
           <span className="text-xl sm:text-2xl">{email_icon}</span>
@@ -167,13 +147,13 @@ function Signin({ setCurrentDialog }) {
         <p className="text-gray-600 text-sm sm:text-base">
           No account?{' '}
           <button
-            className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition-colors"
+            className="text-black hover:text-gray-700 font-semibold cursor-pointer transition-colors"
             onClick={() => setCurrentDialog('DefaultDialog')}
           >
             Create one
           </button>
         </p>
-        <button className="text-blue-600 hover:text-blue-700 text-sm cursor-pointer transition-colors">
+        <button className="text-black hover:text-gray-700 text-sm cursor-pointer transition-colors">
           Forgot password?
         </button>
       </div>
@@ -181,7 +161,6 @@ function Signin({ setCurrentDialog }) {
   );
 }
 
-// SignupWithEmail Dialog
 function SignupWithEmail({
   setCurrentDialog,
   email,
@@ -231,29 +210,21 @@ function SignupWithEmail({
     setIsSubmitting(true);
 
     try {
-      const res = await api.post(
-        `/user/register`,
-        {
-          email: email.trim(),
-          password: password,
-          username: username.trim(),
-        }
-      );
+      const res = await api.post(`/user/register`, {
+        email: email.trim(),
+        password: password,
+        username: username.trim(),
+      });
 
+      toast.success('Account created successfully!');
 
-        toast.success('Account created successfully!');
-
-        // Small delay for visual feedback
-        setTimeout(() => {
-          onSuccess();
-        }, 500);
-    
+      setTimeout(() => {
+        onSuccess();
+      }, 500);
     } catch (err) {
       console.error('Signup error:', err);
       toast.error(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to create account'
+        err.response?.data?.message || err.message || 'Failed to create account'
       );
     } finally {
       setIsSubmitting(false);
@@ -263,7 +234,7 @@ function SignupWithEmail({
   return (
     <div className="flex flex-col justify-center items-center gap-4 w-full">
       <div className="text-center mb-2">
-        <div className="text-4xl sm:text-5xl text-blue-600 flex justify-center mb-4">
+        <div className="text-4xl sm:text-5xl text-black flex justify-center mb-4">
           {email_icon}
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -275,7 +246,6 @@ function SignupWithEmail({
       </div>
 
       <div className="space-y-4 w-full">
-        {/* Username */}
         <div className="form-group">
           <label
             htmlFor="username"
@@ -294,7 +264,7 @@ function SignupWithEmail({
             className={`w-full bg-gray-50 border rounded-lg px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed ${
               errors.username
                 ? 'border-red-300 focus:ring-2 focus:ring-red-400'
-                : 'border-gray-300 focus:ring-2 focus:ring-blue-400'
+                : 'border-gray-300 focus:ring-2 focus:ring-gray-700'
             }`}
           />
           {errors.username && (
@@ -302,7 +272,6 @@ function SignupWithEmail({
           )}
         </div>
 
-        {/* Email */}
         <div className="form-group">
           <label
             htmlFor="email"
@@ -321,7 +290,7 @@ function SignupWithEmail({
             className={`w-full bg-gray-50 border rounded-lg px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed ${
               errors.email
                 ? 'border-red-300 focus:ring-2 focus:ring-red-400'
-                : 'border-gray-300 focus:ring-2 focus:ring-blue-400'
+                : 'border-gray-300 focus:ring-2 focus:ring-gray-700'
             }`}
           />
           {errors.email && (
@@ -329,7 +298,6 @@ function SignupWithEmail({
           )}
         </div>
 
-        {/* Password */}
         <div className="form-group">
           <label
             htmlFor="password"
@@ -348,7 +316,7 @@ function SignupWithEmail({
             className={`w-full bg-gray-50 border rounded-lg px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed ${
               errors.password
                 ? 'border-red-300 focus:ring-2 focus:ring-red-400'
-                : 'border-gray-300 focus:ring-2 focus:ring-blue-400'
+                : 'border-gray-300 focus:ring-2 focus:ring-gray-700'
             }`}
           />
           {errors.password && (
@@ -360,11 +328,11 @@ function SignupWithEmail({
       <button
         onClick={signupHandler}
         disabled={isSubmitting}
-        className="w-full bg-blue-600 text-white font-semibold rounded-lg py-2.5 sm:py-3 px-5 cursor-pointer hover:bg-blue-700 transition-all duration-200 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-black text-white font-semibold rounded-lg py-2.5 sm:py-3 px-5 cursor-pointer hover:bg-gray-700 transition-all duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isSubmitting ? (
           <>
-            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             Creating account...
           </>
         ) : (
@@ -376,7 +344,7 @@ function SignupWithEmail({
         <button
           onClick={() => setCurrentDialog('DefaultDialog')}
           disabled={isSubmitting}
-          className="text-blue-600 hover:text-blue-700 text-sm cursor-pointer transition-colors disabled:opacity-50"
+          className="text-black hover:text-gray-700 text-sm cursor-pointer transition-colors disabled:opacity-50"
         >
           ← Back to sign up options
         </button>
@@ -385,7 +353,7 @@ function SignupWithEmail({
           <button
             onClick={() => setCurrentDialog('SigninWithEmail')}
             disabled={isSubmitting}
-            className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition-colors disabled:opacity-50"
+            className="text-black hover:text-gray-700 font-semibold cursor-pointer transition-colors disabled:opacity-50"
           >
             Sign in
           </button>
@@ -395,7 +363,6 @@ function SignupWithEmail({
   );
 }
 
-// SigninWithEmail Dialog
 function SigninWithEmail({
   setCurrentDialog,
   email,
@@ -435,19 +402,16 @@ function SigninWithEmail({
     setIsSubmitting(true);
 
     try {
-      const res = await api.post(
-        `/user/login`,
-        {
-          email: email.trim(),
-          password: password,
-        }
-      );
+      const res = await api.post(`/user/login`, {
+        email: email.trim(),
+        password: password,
+      });
 
-        toast.success('Welcome back!');
+      toast.success('Welcome back!');
 
-        setTimeout(() => {
-          onSuccess();
-        }, 500);
+      setTimeout(() => {
+        onSuccess();
+      }, 500);
     } catch (err) {
       console.error('Signin error:', err);
       toast.error(
@@ -463,7 +427,7 @@ function SigninWithEmail({
   return (
     <div className="flex flex-col justify-center items-center gap-4 w-full">
       <div className="text-center mb-2">
-        <div className="text-4xl sm:text-5xl text-blue-600 flex justify-center mb-4">
+        <div className="text-4xl sm:text-5xl text-black flex justify-center mb-4">
           {email_icon}
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -475,7 +439,6 @@ function SigninWithEmail({
       </div>
 
       <div className="space-y-4 w-full">
-        {/* Email */}
         <div className="form-group">
           <label
             htmlFor="email"
@@ -494,7 +457,7 @@ function SigninWithEmail({
             className={`w-full bg-gray-50 border rounded-lg px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed ${
               errors.email
                 ? 'border-red-300 focus:ring-2 focus:ring-red-400'
-                : 'border-gray-300 focus:ring-2 focus:ring-blue-400'
+                : 'border-gray-300 focus:ring-2 focus:ring-gray-700'
             }`}
           />
           {errors.email && (
@@ -502,7 +465,6 @@ function SigninWithEmail({
           )}
         </div>
 
-        {/* Password */}
         <div className="form-group">
           <label
             htmlFor="password"
@@ -521,7 +483,7 @@ function SigninWithEmail({
             className={`w-full bg-gray-50 border rounded-lg px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed ${
               errors.password
                 ? 'border-red-300 focus:ring-2 focus:ring-red-400'
-                : 'border-gray-300 focus:ring-2 focus:ring-blue-400'
+                : 'border-gray-300 focus:ring-2 focus:ring-gray-700'
             }`}
           />
           {errors.password && (
@@ -533,11 +495,11 @@ function SigninWithEmail({
       <button
         onClick={signinHandler}
         disabled={isSubmitting}
-        className="w-full bg-blue-600 text-white font-semibold rounded-lg py-2.5 sm:py-3 px-5 cursor-pointer hover:bg-blue-700 transition-all duration-200 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-black text-white font-semibold rounded-lg py-2.5 sm:py-3 px-5 cursor-pointer hover:bg-gray-700 transition-all duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isSubmitting ? (
           <>
-            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             Signing in...
           </>
         ) : (
@@ -549,7 +511,7 @@ function SigninWithEmail({
         <button
           onClick={() => setCurrentDialog('DefaultDialog')}
           disabled={isSubmitting}
-          className="text-blue-600 hover:text-blue-700 text-sm cursor-pointer transition-colors disabled:opacity-50"
+          className="text-black hover:text-gray-700 text-sm cursor-pointer transition-colors disabled:opacity-50"
         >
           ← Back to sign in options
         </button>
@@ -558,7 +520,7 @@ function SigninWithEmail({
           <button
             onClick={() => setCurrentDialog('SignupWithEmail')}
             disabled={isSubmitting}
-            className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition-colors disabled:opacity-50"
+            className="text-black hover:text-gray-700 font-semibold cursor-pointer transition-colors disabled:opacity-50"
           >
             Create one
           </button>

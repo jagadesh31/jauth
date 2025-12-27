@@ -22,9 +22,10 @@ export const AuthProvider = ({ children }) => {
   const jauthLogin = () => {
     const CLIENT_ID = import.meta.env.VITE_JAUTH_CLIENT_ID;
     const REDIRECT_URI = `${import.meta.env.VITE_SERVER_BASE_URL}/user/jauth/callback`;
+    const ORIGIN_URI = import.meta.env.VITE_CLIENT_BASE_URL;
     const SCOPE = "profile email";
     
-    window.location.href = `${import.meta.env.VITE_JAUTH_BASE_URL}/oauth/authorize?response_type=code&scope=${SCOPE}&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPE)}`;
+    window.location.href = `${import.meta.env.VITE_JAUTH_BASE_URL}/oauth/authorize?response_type=code&scope=${SCOPE}&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&origin_uri=${encodeURIComponent(ORIGIN_URI)}`;
 };
 
   const autoFetch = () => {

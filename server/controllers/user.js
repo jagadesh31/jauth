@@ -8,7 +8,7 @@ let userModel = require('../models/user.js');
 const credentialsModel = require('../models/credentials.js');
 const { generateAccessToken, generateRefreshToken, randomCode } = require('../utils/auth.js');
 
-//test
+// ============ AUTH CONTROLLERS ============
 
 const loginUser = async (req, res) => {
     try {
@@ -27,13 +27,13 @@ const loginUser = async (req, res) => {
         let accessToken = generateAccessToken({ userId: result._id });
         let refreshToken = generateRefreshToken({ userId: result._id });
 
-        res.cookie('access_token', accessToken, {
+        res.cookie('jauth_access_token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 15 * 60 * 1000 // 15 minutes
         });
-        res.cookie('refresh_token', refreshToken, {
+        res.cookie('jauth_refresh_token', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -41,7 +41,8 @@ const loginUser = async (req, res) => {
         });
         res.status(200).json({ 
             message: 'Successfully logged in', 
-            user: result});
+            user: result
+        });
 
     } catch (err) {
         console.log('error :', err);
@@ -74,13 +75,14 @@ const registerUser = async (req, res) => {
         let result = await userModel.create(userData);
         let accessToken = generateAccessToken({ userId: result._id });
         let refreshToken = generateRefreshToken({ userId: result._id });
-        res.cookie('access_token', accessToken, {
+        
+        res.cookie('jauth_access_token', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 15 * 60 * 1000 // 15 minutes
         });
-        res.cookie('refresh_token', refreshToken, {
+        res.cookie('jauth_refresh_token', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -119,27 +121,136 @@ const getUserInfo = async (req, res) => {
     }
 };
 
+const getJauthUserInfo = async (req, res) => {
+    const token = req.cookies['jauth_access_token'];
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
+        const userInfo = await userModel.findById(decoded.userId);
+        if (!userInfo) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(userInfo);
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: 'Token expired' });
+        } else if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ message: 'Invalid token' });
+        }
+        console.error('Error fetching user info:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
 const logoutUser = async (req, res) => {
     try {
         res.clearCookie('access_token', {  
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'})
+            sameSite: 'lax'
+        });
+        res.clearCookie('refresh_token', {  
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+        });
         res.status(200).json({ message: 'Successfully logged out' });
+    } catch(err){
+        console.error('Error during logout:', err);
+        return res.status(500).json({ message: 'Server error during logout' });
+    }
+};
+
+const jauthLogin = async (req, res) => {
+    const code = req.query.code;
+
+    console.log(code);
+
+    if (!code) return res.status(400).send('No code found');
+
+    try {
+        const tokenResponse = await axios.post(`${process.env.JAUTH_BASE_URL}/oauth/getToken`, {
+            code,
+            client_id: process.env.JAUTH_CLIENT_ID,
+            client_secret: process.env.JAUTH_CLIENT_SECRET,
+            redirect_uri: `${process.env.SERVER_BASE_URL}/user/jauth/callback`
+        });
+
+        const { access_token } = tokenResponse.data;
+
+        console.log('Access Token:', access_token);
+
+        const userResponse = await axios.get(`${process.env.JAUTH_BASE_URL}/oauth/getUser`, {
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        const jauthUser = userResponse.data;
+
+        let user = await userModel.findOne({ email: jauthUser.email });
+        if (!user) {
+            user = await userModel.create({
+                email: jauthUser.email,
+                username: jauthUser.username,
+                name: jauthUser.name,
+            });
         }
-        catch(err){
-            console.err('Error during logout:', err);
-            return res.status(500).json({ message: 'Server error during logout' });
+
+        let accessToken = generateAccessToken({ userId: user._id });
+        let refreshToken = generateRefreshToken({ userId: user._id });
+
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        console.log('JAuth login successful for user:', user.email);
+
+        res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
+        
+    } catch (error) {
+        console.error('JAuth callback error:', error);
+        res.redirect(`${process.env.CLIENT_BASE_URL}/login?error=jauth_failed`);
+    }
+};
+
+const getApp = async (req, res) => {
+    let { clientId } = req.query;
+    
+    try {
+        let result = await credentialsModel.findOne({ clientId: clientId });
+        if(result){
+        res.status(200).json(result);
+        } else{
+            res.status(404).json({ message: 'Application not found' });
         }
-    } 
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 
 
 const getApps = async (req, res) => {
     let { userId } = req.query;
-    console.log(userId);
     
     try {
         let result = await credentialsModel.find({ userId: userId });
+        console.log(result);
         res.status(200).json(result);
     } catch (err) {
         console.log(err);
@@ -152,6 +263,24 @@ const createCredentials = async (req, res) => {
     let client_secret = randomCode();
     
     try {
+        // Validate URLs
+        const isValidUrl = (string) => {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        };
+
+        if (req.body.originUrls && !req.body.originUrls.every(isValidUrl)) {
+            return res.status(400).json({ message: 'Invalid origin URL(s)' });
+        }
+
+        if (req.body.redirectUrls && !req.body.redirectUrls.every(isValidUrl)) {
+            return res.status(400).json({ message: 'Invalid redirect URL(s)' });
+        }
+
         let result = await credentialsModel.create({
             ...req.body,
             clientId: client_id,
@@ -168,10 +297,9 @@ const createCredentials = async (req, res) => {
 
 const updateCredentials = async (req, res) => {
     const { id } = req.params;
-    const { appName, originUrls, redirectUrls, allowedScopes } = req.body;
+    const { name, originUrls, redirectUrls, scope } = req.body;
 
     try {
-        // Validate URLs
         const isValidUrl = (string) => {
             try {
                 new URL(string);
@@ -192,10 +320,10 @@ const updateCredentials = async (req, res) => {
         const result = await credentialsModel.findByIdAndUpdate(
             id,
             { 
-                appName, 
+                name, 
                 originUrls, 
                 redirectUrls, 
-                allowedScopes
+                scope
             },
             { new: true }
         );
@@ -253,86 +381,42 @@ const regenerateClientSecret = async (req, res) => {
 };
 
 
-const jauthLogin = async (req, res) => {
-    const code = req.query.code;
-
-    console.log(code)
-
-    if (!code) return res.status(400).send('No code found');
+const toggleCredentialsStatus = async (req, res) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
 
     try {
-   
-    const tokenResponse =  await axios.post(`${process.env.JAUTH_BASE_URL}/oauth/getToken`,
-  {
-      code,
-      client_id: process.env.JAUTH_CLIENT_ID,
-      client_secret: process.env.JAUTH_CLIENT_SECRET,
-      redirect_uri: `${process.env.SERVER_BASE_URL}/user/jauth/callback`
-  }
-);
+        const result = await credentialsModel.findByIdAndUpdate(
+            id,
+            { 
+                isActive: isActive
+            },
+            { new: true }
+        );
 
-
-        const { access_token } = tokenResponse.data;
-
-        console.log('Access Token:', access_token);
-
-        const userResponse = await axios.get(`${process.env.JAUTH_BASE_URL}/oauth/getUser`, {
-            headers: {
-                Authorization: `Bearer ${access_token}`
-            }
-        });
-
-        const jauthUser = userResponse.data;
-        
-
-        let user = await userModel.findOne({ email: jauthUser.email });
-        if (!user) {
-            user = await userModel.create({
-                email: jauthUser.email,
-                username: jauthUser.username,
-                name: jauthUser.name,
-            });
+        if (!result) {
+            return res.status(404).json({ message: 'Application not found' });
         }
 
-
-        let accessToken = generateAccessToken({ userId: user._id });
-        let refreshToken = generateRefreshToken({ userId: user._id });
-
-        res.cookie('access_token', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 15 * 60 * 1000 // 15 minutes
-        });
-        res.cookie('refresh_token', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-
-        console.log('JAuth login successful for user:', user.email);
-
-         res.redirect(`${process.env.CLIENT_BASE_URL}/home`);
-
-        
-    } catch (error) {
-        console.error('JAuth callback error:', error);
-        res.redirect(`${process.env.client_url}/login?error=jauth_failed`);
+        res.status(200).json(result);
+    } catch (err) {
+        console.error('Error toggling credentials status:', err);
+        res.status(500).json({ message: 'Server error' });
     }
 };
-
-
 
 module.exports = {
     registerUser,
     loginUser,
     getUserInfo,
+    logoutUser,
+    getApp,
     getApps,
     createCredentials,
     updateCredentials,
     deleteCredentials,
     regenerateClientSecret,
-    logoutUser,
-    jauthLogin
+    toggleCredentialsStatus,
+    jauthLogin,
+    getJauthUserInfo
 };

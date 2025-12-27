@@ -8,7 +8,7 @@ const { randomCode, generateAccessToken, generateRefreshToken } = require('../ut
 
 
 const authorizeApp = async (req, res) => {
-  const { client_id, redirect_uri, response_type, scope } = req.query;
+  const { client_id, redirect_uri, response_type, scope,origin_uri } = req.query;
 
   try {
     const client = await credentialsModel.findOne({ clientId: client_id });
@@ -16,8 +16,20 @@ const authorizeApp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid client_id' });
     }
 
+    if(!client.isActive){
+        return res.status(400).json({ message: 'Client is inactive' });
+    }
+
     if (response_type !== 'code') {
       return res.status(400).json({ message: 'Unsupported response_type' });
+    }
+
+    if(!client.redirectUrls.includes(redirect_uri)) {
+      return res.status(400).json({ message: 'Invalid redirect_uri' });
+    }
+
+    if(!client.originUrls.includes(origin_uri)) {
+      return res.status(400).json({ message: 'Invalid origin_url' });
     }
 
     const CLIENT_URL =
@@ -27,6 +39,7 @@ const authorizeApp = async (req, res) => {
       `${CLIENT_URL}/redirect?` +
         `client_id=${client_id}&` +
         `redirect_uri=${encodeURIComponent(redirect_uri)}&` +
+        `origin_uri=${encodeURIComponent(origin_uri)}&` +
         `response_type=${response_type}&` +
         `scope=${encodeURIComponent(scope || '')}`
     );
@@ -39,12 +52,20 @@ const authorizeApp = async (req, res) => {
 
 const getCode = async (req, res) => {
   try {
+      const token = req.cookies['jauth_access_token'];
+      if (!token) return res.status(401).json({ message: 'No token provided' });
+     const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
+
+     if(decoded.userId === null || decoded.userId === undefined){
+        return res.status(401).json({ message: 'Invalid token' });
+     }
+
     const { client_id, redirect_uri ,scope} = req.query;
 
     const code = randomCode();
 
     await authorizationCodeModel.create({
-      userId: req.userId,
+      userId: decoded.userId,
       clientId: client_id,
       redirectUri: redirect_uri,
       scope,
@@ -74,7 +95,6 @@ const getToken = async (req, res) => {
     if (!client) {
       return res.status(401).json({ error: 'invalid_client' });
     }
-
 
 
     const result = await authorizationCodeModel.findOne({ code });

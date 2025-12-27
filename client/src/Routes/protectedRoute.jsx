@@ -11,6 +11,7 @@ export default function ProtectedRoute() {
 
   useEffect(() => {
     autoFetch();
+    console.log('ProtectedRoute mounted, autoFetch called');
   }, []);
   
 

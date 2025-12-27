@@ -53,10 +53,10 @@ Fetch User Profile`}
             <p className="mt-4"><b>Query Parameters</b></p>
             <ul className="list-disc ml-6 text-gray-300">
               <li><code>client_id</code> – Your OAuth client ID</li>
-              <li><code>redirect_uri</code> – Callback URL registered in JAuth</li>
+              <li><code>redirect_uri</code> – Redirect URL registered in JAuth</li>
+              <li><code>origin_uri</code> – Origin URL registered in JAuth</li>
               <li><code>response_type</code> – Must be <code>code</code></li>
               <li><code>scope</code> – Optional (e.g. <code>profile email</code>)</li>
-              <li><code>state</code> – Optional (recommended for CSRF protection)</li>
             </ul>
 
             <p className="mt-4"><b>Example</b></p>
@@ -65,8 +65,8 @@ Fetch User Profile`}
 ?response_type=code
 &client_id=YOUR_CLIENT_ID
 &redirect_uri=https://yourapp.com/auth/callback
-&scope=profile email
-&state=random_string`}
+&origin_uri=https://yourapp.com
+&scope=profile email`}
             </pre>
           </div>
         </section>
@@ -82,13 +82,12 @@ Fetch User Profile`}
           </p>
 
           <pre className="bg-[#111] p-4 rounded-lg text-sm overflow-x-auto">
-{`https://yourapp.com/auth/callback?code=AUTH_CODE&state=random_string`}
+{`https://yourapp.com/auth/callback?code=AUTH_CODE`}
           </pre>
 
           <ul className="list-disc ml-6 text-gray-300 mt-4">
             <li>Authorization code is single-use</li>
             <li>Expires in ~60 seconds</li>
-            <li>Validate <code>state</code> if used</li>
           </ul>
         </section>
 
@@ -123,7 +122,6 @@ Fetch User Profile`}
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "Bearer",
-  "expires_in": 900
 }`}
             </pre>
           </div>
