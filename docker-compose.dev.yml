@@ -1,0 +1,47 @@
+version: '3.8'
+
+# Development Docker Compose configuration
+# Use this for local development with hot reload
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: jauth-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-jauth}
+    volumes:
+      - mongodb_data_dev:/data/db
+      - mongodb_config_dev:/data/configdb
+    networks:
+      - jauth-network-dev
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: jauth-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme} --appendonly yes
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - jauth-network-dev
+
+volumes:
+  mongodb_data_dev:
+    driver: local
+  mongodb_config_dev:
+    driver: local
+  redis_data_dev:
+    driver: local
+
+networks:
+  jauth-network-dev:
+    driver: bridge
