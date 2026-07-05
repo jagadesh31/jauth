@@ -6,6 +6,14 @@ let redisClient = null;
  * Initialize Redis client
  */
 const initRedis = async () => {
+  if (process.env.USE_REDIS === 'false') {
+    console.log('Skipping Redis initialization (USE_REDIS=false)');
+    return null;
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.REDIS_HOST) {
+    console.log('Skipping Redis initialization in production (no REDIS_HOST provided)');
+    return null;
+  }
   try {
     const redisUrl = process.env.REDIS_PASSWORD
       ? `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`

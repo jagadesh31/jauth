@@ -41,26 +41,18 @@ app.get('/health', (req, res) => {
 
 const port = process.env.PORT || 5001;
 
-// Initialize Redis connection
-const startServer = async () => {
-  try {
-    // Initialize Redis (non-blocking - will continue if Redis fails)
-    await redis.initRedis();
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGO_URL);
-    console.log('MongoDB connected successfully');
+redis.initRedis().catch(err => console.error('Redis init error:', err));
 
-    // Start server
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-  } catch (err) {
-    console.error('Error starting server:', err);
-    process.exit(1);
-  }
-};
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
@@ -77,4 +69,4 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-startServer();
+module.exports = app;
